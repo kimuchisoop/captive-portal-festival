@@ -148,6 +148,10 @@ def main():
     capacity.add_argument('--output',type=Path,required=True)
     capacity_apply=sub.add_parser('apply-capacity',help='Apply a reviewed capacity plan while the owned service is stopped')
     capacity_apply.add_argument('--plan',type=Path,required=True)
+    daily=sub.add_parser('set-daily-hours',help='Set or clear daily opening hours while app and worker are stopped')
+    daily.add_argument('--open');daily.add_argument('--close')
+    daily.add_argument('--utc-offset-minutes',type=int,default=540,help='Local time offset; default 540 (JST)')
+    daily.add_argument('--clear',action='store_true',help='Remove the daily limit; the service window still applies')
     information_apply=sub.add_parser('apply-event-information',help='Apply a reviewed display-information plan while app and worker are stopped')
     information_apply.add_argument('--plan',type=Path,required=True)
     sub.add_parser('ap-check',help='Inspect AP inventory without connecting to or modifying an AP')
@@ -233,6 +237,11 @@ def main():
     if args.command=='apply-event-information':
         from event_information import apply_plan
         print(json.dumps(apply_plan(s,json.loads(args.plan.read_text(encoding='utf-8')))));return
+    if args.command=='set-daily-hours':
+        from daily_hours import apply as apply_daily_hours
+        if args.clear==bool(args.open or args.close):raise SystemExit('Use --open and --close, or --clear')
+        hours=None if args.clear else dict(open=args.open,close=args.close,utc_offset_minutes=args.utc_offset_minutes)
+        print(json.dumps(apply_daily_hours(s,hours)));return
     if args.command=='plan-capacity':
         from capacity_policy import make_plan
         secure_new_file(args.output,json.dumps(make_plan(s),ensure_ascii=False,indent=2).encode())
