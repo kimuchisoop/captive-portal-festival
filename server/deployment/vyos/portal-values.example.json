@@ -3,6 +3,7 @@
   "guest_interfaces": ["要確認"],
   "guest_networks": ["要確認"],
   "portal_server": "要確認",
+  "portal_hostname": "要確認",
   "dns_servers": ["要確認"],
   "internal_networks": ["要確認"],
   "firewall_rule_start": "要確認",

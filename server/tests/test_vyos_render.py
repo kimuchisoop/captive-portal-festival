@@ -7,7 +7,7 @@ from render_portal_config import check,render,main
 
 EXAMPLE=ROOT/'deployment'/'vyos'/'portal-values.example.json'
 FILLED={'guest_interfaces':['eth1.10','eth1.20'],'guest_networks':['192.0.2.0/24','198.51.100.0/24'],
-        'portal_server':'203.0.113.11','dns_servers':['203.0.113.53'],'internal_networks':['203.0.113.0/24'],
+        'portal_server':'203.0.113.11','portal_hostname':'wifi.example.test','dns_servers':['203.0.113.53'],'internal_networks':['203.0.113.0/24'],
         'firewall_rule_start':500,'nat_rule_start':100,'existing_firewall_rules':[10,20],'existing_nat_rules':[]}
 
 def filled(**change):values=copy.deepcopy(FILLED);values.update(change);return values
@@ -16,7 +16,23 @@ class VyosRenderTests(unittest.TestCase):
     def test_example_is_not_rendered_until_decided(self):
         settings,problems=check(json.loads(EXAMPLE.read_text(encoding='utf-8')))
         self.assertIsNone(settings)
-        self.assertEqual(len([p for p in problems if '要確認' in p]),7)
+        self.assertEqual(len([p for p in problems if '要確認' in p]),8)
+
+    def test_https_first(self):
+        text=render(check(filled())[0]);lines=text.splitlines()
+        # Only port 80 is ever redirected; 443 goes to the server untouched and is never translated.
+        nat=[l for l in lines if l.startswith('set nat destination')]
+        self.assertIn("set nat destination rule 100 destination port '80'",nat)
+        self.assertFalse(any('443' in l for l in nat))
+        self.assertIn('    return 302 https://wifi.example.test/;',lines)
+        self.assertIn('    listen 80 default_server;',lines)
+        capport=[l for l in lines if 'captive-portal' in l and 'set service' in l]
+        self.assertEqual(len(capport),1);self.assertTrue(capport[0].startswith('# '))
+        self.assertIn("'https://wifi.example.test/capport/api'",capport[0])
+        self.assertFalse(any('http://wifi.example.test' in l for l in lines))
+        for bad in ('203.0.113.11','Wifi.Example.Test','wifi','https://wifi.example.test','wifi.example.test/','-a.example.test'):
+            settings,problems=check(filled(portal_hostname=bad))
+            self.assertIsNone(settings,bad);self.assertTrue(any('portal_hostname' in p for p in problems))
 
     def test_rendered_commands(self):
         settings,problems=check(filled());self.assertEqual(problems,[])

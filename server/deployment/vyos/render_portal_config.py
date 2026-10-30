@@ -1,14 +1,20 @@
 """Prints the VyOS 1.4 commands for guide 16.3 (stage 2: block before consent) and 16.6 (rollback).
 
+HTTPS first: the consent page is only served at https://<portal_hostname>/ (a certificate guests already
+trust). Port 443 is never intercepted; only the OS's plain-http login probe on port 80 is sent to the
+server, whose nginx answers with a redirect to the HTTPS page. CAPPORT (RFC 8910) points devices to the
+HTTPS API directly.
+
 Usage: python render_portal_config.py <values.json>   (start from portal-values.example.json)
 Stops and lists every problem while a value is missing, still 要確認, or collides with an existing rule.
 Prints only; nothing is sent to the router.
 """
 import ipaddress,json,re,sys
 
-FIELDS={'guest_interfaces','guest_networks','portal_server','dns_servers','internal_networks',
+FIELDS={'guest_interfaces','guest_networks','portal_server','portal_hostname','dns_servers','internal_networks',
         'firewall_rule_start','nat_rule_start','existing_firewall_rules','existing_nat_rules'}
 INTERFACE=re.compile(r'[a-z]{2,8}[0-9]{1,3}(\.[0-9]{1,4})?')
+HOSTNAME=re.compile(r'(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}')
 STEP=10
 CHAIN='firewall ipv4 forward filter'
 
@@ -35,6 +41,8 @@ def check(values):
     if not isinstance(values['guest_interfaces'],list) or not all(isinstance(i,str) and INTERFACE.fullmatch(i) for i in values['guest_interfaces']):
         problems.append('guest_interfaces must be names like eth1.10')
     elif len(set(values['guest_interfaces']))!=len(values['guest_interfaces']):problems.append('guest_interfaces repeats a name')
+    if not isinstance(values['portal_hostname'],str) or not HOSTNAME.fullmatch(values['portal_hostname']):
+        problems.append('portal_hostname must be a lowercase DNS name with a trusted certificate (not an IP)')
     out['guest_networks']=networks('guest_networks');out['internal_networks']=networks('internal_networks')
     out['portal_server']=addresses('portal_server',True);out['dns_servers']=addresses('dns_servers')
     for key in ('firewall_rule_start','nat_rule_start'):
@@ -46,7 +54,7 @@ def check(values):
     if any(g.overlaps(i) for g in guests for i in internal):problems.append('internal_networks overlaps guest_networks')
     for address in [out['portal_server']]+out['dns_servers']:
         if any(address in g for g in guests):problems.append(str(address)+' is inside guest_networks')
-    out['guest_interfaces']=values['guest_interfaces']
+    out['guest_interfaces']=values['guest_interfaces'];out['portal_hostname']=values['portal_hostname']
     out['firewall_rules']=[values['firewall_rule_start']+STEP*i for i in range(5+len(out['dns_servers']))]
     out['nat_rules']=[values['nat_rule_start']+i for i in range(len(out['guest_interfaces']))]
     for key,existing in (('firewall_rules','existing_firewall_rules'),('nat_rules','existing_nat_rules')):
@@ -66,7 +74,7 @@ def render(c):
     lines+=['','# 転送のルール（上から順に評価。番号は既存ルールとの順番を確認済みであること）',
             '# 戻りの通信（すでに既存ルールにあれば、この1件は不要）']
     rule("action 'accept'","state 'established'","state 'related'")
-    lines.append('# ゲスト → 同意画面(80/443)')
+    lines.append('# ゲスト → 同意画面（443が本体。80はOSのログイン確認を受けてhttpsへ転送するためだけ）')
     rule("action 'accept'","source group network-group 'GUEST-NETS'","destination address '{}'".format(c['portal_server']),"protocol 'tcp'","destination port '80,443'")
     lines.append('# ゲスト → DNS')
     for dns in c['dns_servers']:
@@ -77,7 +85,7 @@ def render(c):
     rule("action 'accept'","source group address-group 'PORTAL-AUTHED'")
     lines.append('# 未許可のゲスト → それ以外：拒否')
     last=rule("action 'drop'","source group network-group 'GUEST-NETS'")
-    lines+=['','# 未許可端末のhttp(80)を同意画面へ向ける（httpsは向けない）',
+    lines+=['','# 未許可端末のhttp(80)だけをサーバーへ向ける。443は横取りしない（証明書エラーになるため）',
             '# VyOSは1つのルールにaddress-groupとnetwork-groupを同時に書けないため、入口のインターフェースで絞る']
     for number,interface in zip(c['nat_rules'],c['guest_interfaces']):
         lines+=['set nat destination rule {} {}'.format(number,p) for p in (
@@ -86,12 +94,24 @@ def render(c):
     lines+=['','# 反映：5分以内にconfirmしないと自動で元に戻る','commit-confirm 5',
             '# 16.3の試験（端末1台）に通ったら：','confirm','save',
             '# DHCPはcore-rt自身（またはリレー）が扱うため、転送のルールには含めない',
+            '','# CAPPORT（RFC 8910）：DHCPv4オプション114で端末にHTTPSのAPIを知らせる。対応端末はhttpの横取りなしで同意画面を開く',
+            '# 要確認：VyOSの版で書き方が違う。configureでTab補完して option captive-portal があるか確かめてから、#を外して使う',
+            "# set service dhcp-server shared-network-name <名前> subnet <ゲストの範囲> option captive-portal 'https://{}/capport/api'".format(c['portal_hostname']),
             '# 許可を外しても、すでに張られた接続は切れるまで続く（すぐ止めるなら reset conntrack）',
             '','# ===== 16.6 切り戻し（予備案：ゲストを全員許可。内部への拒否は残す） =====']
     lines+=['delete nat destination rule '+str(n) for n in c['nat_rules']]
     lines+=["set {} rule {} action 'accept'".format(CHAIN,last),'commit','save',
             '# 段階1の状態に完全に戻す場合：load /config/before-portal.boot → commit → save',
-            '# 掲示：当日資料/wifi-案内.html（Wi-Fi接続用QRだけの案内）']
+            '# 掲示：当日資料/wifi-案内.html（Wi-Fi接続用QRだけの案内）',
+            '','# ===== サーバー側（nginx、http contextに追加）：横取りした80番をHTTPSの同意画面へ =====',
+            '# OSの確認は captive.apple.com などの名前で届くため、名前によらず受ける default_server にする',
+            'server {','    listen 80 default_server;','    listen [::]:80 default_server;','    server_name _;',
+            '    add_header Cache-Control "no-store" always;','    return 302 https://{}/;'.format(c['portal_hostname']),'}',
+            '','# ===== HTTPSの事前確認（ゲストの端末から、許可される前に） =====',
+            '# 1. DNS：{} が {} になる（上のDNSサーバーで引けること）'.format(c['portal_hostname'],c['portal_server']),
+            '# 2. 証明書：https://{}/ が警告なしで開く（公的な認証局の証明書。端末に入れていない独自CAは不可）'.format(c['portal_hostname']),
+            '# 3. http://neverssl.com/ などを開くと https://{}/ へ移る'.format(c['portal_hostname']),
+            '# 4. https://example.com/ は開けない（横取りしないので、つながらないだけ。証明書エラーが出ないこと）']
     return '\n'.join(lines)+'\n'
 
 def main(argv):
