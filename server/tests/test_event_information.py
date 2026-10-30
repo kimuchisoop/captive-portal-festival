@@ -13,6 +13,10 @@ class InformationTests(unittest.TestCase):
     get=base.Tests.get
     login=base.Tests.login
     count=base.Tests.count
+    def test_capport_api_keeps_every_client_captive(self):
+        r=self.get('/capport/api')
+        self.assertEqual(r.status_code,200);self.assertEqual(r.mimetype,'application/captive+json')
+        self.assertEqual(r.json,{'captive':True,'user-portal-url':base.ORIGIN+'/'});self.assertEqual(r.headers['Cache-Control'],'no-store')
     def test_public_unknown_dates_hidden(self):
         info=self.get('/v1/public').json['event_information'];self.assertIsNone(info['ssid']);self.assertIsNone(info['service_start_utc'])
     def test_plan_only_and_idempotent(self):
@@ -35,6 +39,18 @@ class InformationTests(unittest.TestCase):
         for name in ('app','worker'):
             with owned_runtime(self.home,name):
                 with self.assertRaises(ValueError):apply_plan(self.s,plan)
+    def test_config_changes_refused_during_incomplete_operation(self):
+        import capacity_policy
+        from event_information import config_hash
+        original=(self.home/'config.json').read_bytes()
+        plans=[(apply_plan,make_plan(self.s,current(self.s.config),config_hash(self.home))),(capacity_policy.apply_plan,capacity_policy.make_plan(self.s))]
+        for marker in ('restore.incomplete','upgrade.incomplete','policy-apply.incomplete'):
+            (self.home/marker).write_bytes(b'{}')
+            try:
+                for apply,plan in plans:
+                    with self.assertRaisesRegex(ValueError,'Incomplete operation'):apply(self.s,plan)
+            finally:(self.home/marker).unlink()
+        self.assertEqual((self.home/'config.json').read_bytes(),original)
     def test_invalid_text_and_dates(self):
         data=current(self.s.config)
         for changes in ({'ssid':'あ'*11},{'name_ja':'bad\nline'},{'period_confirmed':1},{'service_end_utc':data['service_start_utc']},{'service_start_utc':None}):

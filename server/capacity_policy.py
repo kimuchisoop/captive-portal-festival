@@ -35,8 +35,8 @@ def apply_plan(s,plan):
     limits=plan.get('limits')
     if not isinstance(limits,dict) or set(limits)!=set(LIMITS): raise ValueError('Invalid limits')
     if any(type(v) is not int or not 1<=v<=2**63-1 for v in limits.values()): raise ValueError('Invalid capacity values')
-    from recovery_kit import stopped
-    with stopped(s.home):
+    from workflow_generation import stopped_config_change
+    with stopped_config_change(s):
         # Recheck after lock acquisition to avoid replacing a newly edited configuration.
         if config_path.read_bytes()!=original: raise ValueError('Configuration changed')
         history=s.home/'configuration-history'
