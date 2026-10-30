@@ -138,6 +138,8 @@ class Service:
                     raise ValueError(f'Missing {k}')
             if timestamp(c['service_end_utc']) <= timestamp(c['service_start_utc']):
                 raise ValueError('Invalid service window')
+        from daily_hours import validate as validate_daily_hours
+        validate_daily_hours(c.get('daily_service_hours'))
         for lang in ('ja', 'en'):
             if not (self.home / f'terms.{lang}.txt').read_text(encoding='utf-8').strip():
                 raise ValueError('Empty terms')
@@ -164,6 +166,9 @@ class Service:
             raise ApiError('intake_disabled', 503, '受付は停止中です。運営者の設定を待っています。')
         if not timestamp(self.config['service_start_utc']) <= self.now() < timestamp(self.config['service_end_utc']):
             raise ApiError('service_closed', 410, '提供期間外です。')
+        from daily_hours import is_open
+        if not is_open(self.config.get('daily_service_hours'), self.now()):
+            raise ApiError('service_closed', 410, '本日の提供時間外です。')
 
     def record_deadline(self):
         return timestamp(self.config['service_end_utc']) + self.config['retention_days'] * 86400
@@ -407,7 +412,7 @@ def create_app(home, clock=time.time):
         except ApiError as e:
             state = e.code
         from event_information import public as display_information
-        return jsonify(mode='local', production_enabled=False, service_state=state, adapter='disconnected', terms=s.terms(lang),event_information=display_information(s.config))
+        return jsonify(mode='local', production_enabled=False, service_state=state, adapter='disconnected', terms=s.terms(lang),event_information=display_information(s.config),daily_service_hours=s.config.get('daily_service_hours'))
 
     @app.route('/v1/admin/session', methods=['GET', 'POST'])
     @app.post('/v1/session')

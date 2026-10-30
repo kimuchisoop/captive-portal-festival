@@ -17,6 +17,31 @@ class InformationTests(unittest.TestCase):
         r=self.get('/capport/api')
         self.assertEqual(r.status_code,200);self.assertEqual(r.mimetype,'application/captive+json')
         self.assertEqual(r.json,{'captive':True,'user-portal-url':base.ORIGIN+'/'});self.assertEqual(r.headers['Cache-Control'],'no-store')
+    def test_daily_hours_limit_intake_and_keep_history(self):
+        from daily_hours import apply as apply_daily,validate
+        from app import ApiError
+        for bad in [dict(open='17:00',close='10:00',utc_offset_minutes=540),dict(open='10:00',close='10:00',utc_offset_minutes=540),
+                    dict(open='9:00',close='17:00',utc_offset_minutes=540),dict(open='10:00',close='17:00',utc_offset_minutes=900),dict(open='10:00',close='17:00')]:
+            with self.assertRaises(ValueError):validate(bad)
+        # Pick the offset that makes the current clock exactly 12:00 local, inside the sample service window.
+        minute=(self.clock.value//60)%1440;offset=((720-minute+720)%1440)-720
+        Service(self.home,self.clock).intake()
+        original=(self.home/'config.json').read_bytes();audit=self.count('audit')
+        result=apply_daily(self.s,dict(open='10:00',close='17:00',utc_offset_minutes=offset))
+        self.assertTrue(result['applied']);self.assertFalse(result['production_enabled'])
+        Service(self.home,self.clock).intake()
+        self.assertEqual(self.count('audit'),audit+2)
+        self.assertTrue(any(p.read_bytes()==original for p in (self.home/'configuration-history').glob('*-daily-hours-before.json')))
+        apply_daily(Service(self.home,self.clock),dict(open='13:00',close='17:00',utc_offset_minutes=offset))
+        closed=Service(self.home,self.clock)
+        with self.assertRaises(ApiError) as caught:closed.intake()
+        self.assertEqual(caught.exception.code,'service_closed')
+        self.clock.value+=3600;closed.intake()  # 13:00 local
+        client=create_app(self.home,self.clock).test_client()
+        public_hours=client.get('/v1/public',base_url=base.ORIGIN).json['daily_service_hours']
+        self.assertEqual(public_hours,dict(open='13:00',close='17:00',utc_offset_minutes=offset))
+        apply_daily(Service(self.home,self.clock),None)
+        self.assertIsNone(Service(self.home,self.clock).config['daily_service_hours'])
     def test_public_unknown_dates_hidden(self):
         info=self.get('/v1/public').json['event_information'];self.assertIsNone(info['ssid']);self.assertIsNone(info['service_start_utc'])
     def test_plan_only_and_idempotent(self):
