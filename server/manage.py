@@ -295,7 +295,7 @@ def main():
         print('LOCAL server: ' + s.config['origin'] + ' (Ctrl+C to stop)', flush=True)
         with owned_runtime(s.home,'app'),runtime_heartbeat(application.extensions['service'],'app'):
             serve(application, host='127.0.0.1', port=urlsplit(s.config['origin']).port,
-                  threads=4, max_request_body_size=65536, clear_untrusted_proxy_headers=not s.transport['enabled'])
+                  threads=s.config.get('server_threads', 4), max_request_body_size=65536, clear_untrusted_proxy_headers=not s.transport['enabled'])
     elif args.command == 'backup':
         print(str(backup(s)))
     elif args.command=='backup-stream':

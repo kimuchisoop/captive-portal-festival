@@ -155,7 +155,9 @@ def register_features(app,s,auth,body):
                 db.execute('INSERT INTO terms_publications (id,revision_id,actor,created_at) VALUES (?,?,?,?)',(publication_id,r['id'],g.session['owner_id'],s.now()))
                 s.audit(db,g.session['owner_id'],'terms_published_local',r['id'])
                 return dict(publication_id=publication_id,scope='local_only',production_enabled=False),201,s.now()+86400
-            return s.idempotent(db,g.session['owner_id'],action)
+            result=s.idempotent(db,g.session['owner_id'],action)
+        s.forget_public_terms()  # after commit, so visitors see the new terms at once
+        return result
 
     @app.get('/v1/admin/storage-history')
     @auth('admin','read')

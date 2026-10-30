@@ -1,0 +1,13 @@
+{
+  "_note": "Copy, fill in from core-rt's real configuration (guide 16.1), then run render_portal_config.py. Keys starting with _ are ignored. No passwords or API keys here.",
+  "guest_interfaces": ["要確認"],
+  "guest_networks": ["要確認"],
+  "portal_server": "要確認",
+  "portal_hostname": "要確認",
+  "dns_servers": ["要確認"],
+  "internal_networks": ["要確認"],
+  "firewall_rule_start": "要確認",
+  "nat_rule_start": "要確認",
+  "existing_firewall_rules": [],
+  "existing_nat_rules": []
+}
