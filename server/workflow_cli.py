@@ -6,14 +6,17 @@ from database import load_settings,initialize_schema,transaction
 from security import protect_directory
 from jobs import secure_new_file,set_meta
 from workflow_common import canonical,private_dir,read_private,strict_json,target_lock,sha,identifier
-from workflow_database import maintenance_settings,verify_contract
+from workflow_database import maintenance_settings,verify_contract,precheck_initialization
 from workflow_generation import create_generation,require_runtime_ready
 
 def initialize(home,sample=False,restored=False,db_settings=None,maintenance_file=None,open_service=True):
     if restored:raise ValueError('Use the explicit schema-five recovery commands')
     if not db_settings or not maintenance_file:raise ValueError('Separate runtime and maintenance credentials required')
     maintenance=maintenance_settings(maintenance_file,db_settings)
-    home=Path(home).resolve();home.mkdir(mode=0o700,parents=True,exist_ok=False);protect_directory(home)
+    home=Path(home).resolve()
+    if home.exists():raise ValueError('Initialization needs a NEW data folder: '+str(home))
+    precheck_initialization(maintenance)
+    home.mkdir(mode=0o700,parents=True,exist_ok=False);protect_directory(home)
     secure_new_file(home/'initialization.incomplete',canonical(dict(id=uid(),schema_version=5)))
     config=strict_json((ROOT/'config.example.json').read_bytes())
     if sample:
@@ -23,7 +26,16 @@ def initialize(home,sample=False,restored=False,db_settings=None,maintenance_fil
     from cryptography.fernet import Fernet
     for name,value in [('session.key',os.urandom(32)),('backup.key',Fernet.generate_key()),('mfa.key',Fernet.generate_key())]:secure_new_file(home/name,value)
     for language in ('ja','en'):secure_new_file(home/('terms.'+language+'.txt'),(ROOT/('terms.'+language+'.txt')).read_bytes())
-    initialize_schema(maintenance,ROOT/'schema-v5.sql')
+    try:initialize_schema(maintenance,ROOT/'schema-v5.sql')
+    except Exception as error:
+        # MySQL DDL commits as it goes. Record what exists; nothing is dropped or deleted automatically.
+        try:
+            with transaction(maintenance) as db:created=sorted(r[0] for r in db.execute('SHOW TABLES').fetchall())
+        except Exception:created=None
+        secure_new_file(home/'initialization.failed.json',canonical(dict(error=type(error).__name__+': '+str(error),database=maintenance['database'],tables_created=created,
+            next_steps=['Fix the cause shown in error','Have the DB administrator recreate an EMPTY database (the failed attempt left only empty tables)',
+                        'Rename this data folder aside (it is kept, not deleted)','Run init again with a NEW data folder'])))
+        raise ValueError('Initialization failed after creating '+(str(len(created)) if created is not None else 'unknown')+' tables; see '+str(home/'initialization.failed.json')) from error
     with transaction(maintenance,True) as db:
         verify_contract(db);set_meta(db,'schema_version','5');create_generation(db,int(time.time()))
     history=private_dir(home,'migration-history');destination=history/('initialization-'+uid()+'.completed.json')

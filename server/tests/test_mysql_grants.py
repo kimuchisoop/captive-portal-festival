@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT));sys.path.insert(0,str(ROOT.parent/'tools'))
 import mysql_grants
 from operations import inspect_grants
+from workflow_database import maintenance_findings
 
 class GeneratedGrantContractTests(unittest.TestCase):
     def test_runtime_grants_match_contract(self):
@@ -19,6 +20,25 @@ class GeneratedGrantContractTests(unittest.TestCase):
     def test_unsafe_names_rejected(self):
         for args in [('db`x','u','%'),('db','u\'x','%'),('db','u','h\'x')]:
             with self.assertRaises(ValueError):mysql_grants.runtime_statements(*args)
+
+class InitializationPrecheckTests(unittest.TestCase):
+    def grants(self):
+        return [s.rstrip(';') for s in mysql_grants.maintenance_statements('app_db','mnt','%')]
+
+    def test_generated_maintenance_grants_pass(self):
+        self.assertEqual(maintenance_findings(self.grants(),'app_db',1,1,'NONE'),[])
+
+    def test_missing_update_and_untrusted_binlog_are_reported(self):
+        lines=[l.replace(', UPDATE','') if '`meta`' in l else l for l in self.grants()]
+        findings=maintenance_findings(lines,'app_db',1,0,'NONE')
+        self.assertTrue(any('UPDATE' in f for f in findings),findings)
+        self.assertTrue(any('log_bin_trust_function_creators' in f for f in findings),findings)
+        self.assertEqual(maintenance_findings(self.grants(),'app_db',0,0,'NONE'),[])  # binlog off
+
+    def test_database_or_global_all_privileges_pass(self):
+        self.assertEqual(maintenance_findings(['GRANT ALL PRIVILEGES ON `app_db`.* TO `m`@`%`'],'app_db',0,0,'NONE'),[])
+        self.assertEqual(maintenance_findings(['GRANT ALL PRIVILEGES ON *.* TO `root`@`%`'],'app_db',1,0,'NONE'),[])
+        self.assertTrue(maintenance_findings(['GRANT ALL PRIVILEGES ON `other`.* TO `m`@`%`'],'app_db',0,0,'NONE'))
 
 class GeneratedGrantMySQLTests(unittest.TestCase):
     def setUp(self):
@@ -64,5 +84,44 @@ class GeneratedGrantMySQLTests(unittest.TestCase):
         self.assertEqual(review['status'],'pass',result)
         client=create_app(home).test_client()
         self.assertEqual(client.get('/v1/public?lang=ja',base_url='http://127.0.0.1:8890').status_code,200)
+
+    def accounts(self,maintenance_privileges=None):
+        from security import protect_directory
+        from jobs import secure_new_file
+        token=secrets.token_hex(5);database='pre_'+token;maint='mnt_'+token;password=secrets.token_urlsafe(18)
+        grants=mysql_grants.maintenance_statements(database,maint,'%') if maintenance_privileges is None else ['GRANT '+maintenance_privileges+' ON `'+database+"`.* TO '"+maint+"'@'%'"]
+        self.root(['CREATE DATABASE `'+database+'`',"CREATE USER '"+maint+"'@'%' IDENTIFIED BY '"+password+"'"]+grants)
+        base=dict(host=self.c['host'],port=self.c['port'],database=database)
+        folder=Path(self.temp.name)/('m-'+token);folder.mkdir();protect_directory(folder)
+        secure_new_file(folder/'maintenance.json',json.dumps({**base,'user':maint,'password':password}).encode())
+        return {**base,'user':'svc_'+token,'password':'unused-'+token},folder/'maintenance.json',database
+
+    def test_precheck_refuses_before_creating_anything(self):
+        from workflow_cli import initialize
+        runtime,maintenance,database=self.accounts('SELECT, INSERT')
+        home=Path(self.temp.name)/'refused'
+        with self.assertRaisesRegex(ValueError,'Initialization not started'):initialize(home,db_settings=runtime,maintenance_file=maintenance,open_service=False)
+        self.assertFalse(home.exists())
+        runtime,maintenance,database=self.accounts()
+        # Table-level grants only show the app's own tables, so emptiness is checked for those.
+        self.root(['CREATE TABLE `'+database+'`.`meta` (id INT)'])
+        with self.assertRaisesRegex(ValueError,'not empty'):initialize(home,db_settings=runtime,maintenance_file=maintenance,open_service=False)
+        self.assertFalse(home.exists())
+
+    def test_failed_schema_creation_is_recorded_not_deleted(self):
+        from unittest.mock import patch
+        from database import transaction
+        import workflow_cli
+        runtime,maintenance,database=self.accounts()
+        def partial(settings,schema_file):
+            with transaction(settings,True) as db:db.execute('CREATE TABLE meta (k INT PRIMARY KEY)')
+            raise RuntimeError('simulated DDL failure')
+        home=Path(self.temp.name)/'failed'
+        with patch.object(workflow_cli,'initialize_schema',partial):
+            with self.assertRaisesRegex(ValueError,'after creating 1 tables'):
+                workflow_cli.initialize(home,db_settings=runtime,maintenance_file=maintenance,open_service=False)
+        record=json.loads((home/'initialization.failed.json').read_text(encoding='utf-8'))
+        self.assertEqual(record['tables_created'],['meta']);self.assertIn('simulated DDL failure',record['error'])
+        self.assertTrue((home/'initialization.incomplete').exists())
 
 if __name__=='__main__':unittest.main()
