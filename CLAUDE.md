@@ -12,6 +12,7 @@
 
 - 資料は`docs/ガイド.md`に集約する。例外は利用者の指示で分けた`docs/キャプティブポータル作成手順.md`（VyOS連携の作成・試験手順）のみ。それ以外の新しい.mdは増やさず、該当の章に追記する（README.mdは案内のみ、CLAUDE.mdは作業ルール）。
 - 両構成に共通する変更は基点ブランチに入れ、`mysql-local`へ取り込む。`mysql-remote`は保険なので、共通変更の取り込みは必要になったときに行い、`mysql-remote`側の変更を基点へ戻さない。構成固有の変更だけを各構成ブランチに入れる。
+- `main`へのPRは主構成の`freebsd/mysql-local`から出す。基点から直接`main`へ出すと、`main`にある同一マシン構成の手順やrc.dの`REQUIRE: mysql`が消える。
 - バイナリはFreeBSD上でビルドする（`docs/ガイド.md`）。Windows/Linux版はFreeBSDで動かない。
 - AP連携は未実装（adapter=disconnected）。本番値・承認状態の`false`を書き換えない。
 - 実際の接続情報・パスワード・鍵・wheelhouseをコミットしない。
