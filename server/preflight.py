@@ -81,6 +81,8 @@ def inspect_home(home,online=True,package_check=True):
         except Exception: add('database','fail','MySQL接続・保存構造','接続または保存構造を確認できません。接続先の値や例外の詳細は表示しません。')
     elif not online: add('database','skipped','MySQL接続・保存構造','オフライン指定により接続確認を省略しました。')
     add('production','warning','本番受付・AP連携','本番受付は無効、AP連携は未接続です。実機・公開HTTPSの確認は別途必要です。')
+    if config and config.get('backup_retention_days') is None:
+        add('backup_policy','warning','バックアップの保存方針','backup_retention_days が未設定のため、バックアップは作られません。保存期間を決めて設定してください（期限で削除はしません）。')
     if config and any(config.get(k) is None for k in ('db_warning_bytes','backup_warning_bytes')):
         add('capacity','warning','容量警告','暫定案を作成し、承認した警告値を設定してください。')
     return dict(checks=checks,failed=sum(c['status']=='fail' for c in checks),online=online,local_start_checks_passed=not any(c['status']=='fail' for c in checks),production_ready=False,mutation_performed=False)
