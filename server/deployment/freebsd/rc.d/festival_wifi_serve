@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # PROVIDE: festival_wifi_serve
-# REQUIRE: LOGIN NETWORKING
+# REQUIRE: LOGIN NETWORKING mysql
 # KEYWORD: shutdown
 #
 # festival_wifi_serve_enable="YES"
