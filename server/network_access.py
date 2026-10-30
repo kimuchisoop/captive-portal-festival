@@ -11,7 +11,7 @@ import threading
 import time
 from pathlib import Path
 
-from vyos_gateway import VyosGateway, GatewayError, GatewayRefused, GatewayRejected, GatewayUnavailable
+from vyos_gateway import VyosGateway, GatewayError, GatewayRefused, GatewayRejected
 
 FIELDS = {'enabled', 'api_origin', 'api_key_file', 'ca_file', 'guest_networks', 'access_seconds'}
 PREFIX = 'ipv4:'
@@ -43,6 +43,8 @@ def validate(config, home):
         # Without the proxy boundary the app only listens on loopback and never sees a guest address.
         raise ValueError('vyos_portal needs https_transport enabled')
     plain_name(data['api_key_file'], 'api_key_file')
+    if not (Path(home) / data['api_key_file']).is_file():
+        raise ValueError('vyos_portal.api_key_file missing')
     if data['ca_file'] is not None:
         plain_name(data['ca_file'], 'ca_file')
         if not (Path(home) / data['ca_file']).is_file():

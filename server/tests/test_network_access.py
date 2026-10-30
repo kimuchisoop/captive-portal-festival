@@ -1,5 +1,5 @@
 """Stage 3 wiring: guest entry by address, batched PORTAL-AUTHED changes, expiry and failures against a fake core-rt."""
-import sys,io,json,time,unittest
+import sys,io,json,tempfile,time,unittest
 from pathlib import Path
 from urllib.error import URLError
 from urllib.parse import parse_qs
@@ -45,8 +45,12 @@ class Settings(unittest.TestCase):
         for change in (dict(api_key_file='../key'),dict(api_key_file='a/b'),dict(guest_networks=[]),dict(guest_networks=['192.0.2.1/33']),
                        dict(access_seconds=30),dict(access_seconds='7200'),dict(extra=1)):
             with self.assertRaises(ValueError,msg=change):validate({'vyos_portal':dict(VYOS,**change),'https_transport':HTTPS},'.')
+    def test_key_file_must_exist(self):
+        with tempfile.TemporaryDirectory() as home:
+            with self.assertRaises(ValueError):validate({'vyos_portal':VYOS,'https_transport':HTTPS},home)
+            (Path(home)/'vyos-api.key').write_text(KEY,encoding='utf-8');self.assertTrue(validate({'vyos_portal':VYOS,'https_transport':HTTPS},home)['enabled'])
     def test_only_guest_ipv4_addresses(self):
-        settings=validate({'vyos_portal':VYOS,'https_transport':HTTPS},'.')
+        settings=dict(VYOS,guest_networks=[__import__('ipaddress').IPv4Network('192.0.2.0/24')])
         self.assertEqual(source_ref(settings,'192.0.2.9'),'ipv4:192.0.2.9');self.assertEqual(source_ref(settings,'::ffff:192.0.2.9'),'ipv4:192.0.2.9')
         for other in ('127.0.0.1','198.51.100.1','2001:db8::1','',None,'not-an-ip'):self.assertIsNone(source_ref(settings,other))
     def test_deadline_cut_at_closing_and_window_end(self):
