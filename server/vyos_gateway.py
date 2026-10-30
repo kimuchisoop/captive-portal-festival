@@ -18,7 +18,7 @@ class GatewayUnavailable(GatewayError):"""Router not reached, timed out, or answ
 class GatewayRejected(GatewayError):"""Router answered and refused the request."""
 
 class VyosGateway:
-    def __init__(self,origin,api_key,allowed_networks,ca_file=None,timeout=5,opener=urlopen):
+    def __init__(self,origin,api_key,allowed_networks,ca_file=None,timeout=5,opener=urlopen,commit_timeout=None):
         parts=urlsplit(origin) if isinstance(origin,str) else None
         if not parts or parts.scheme!='https' or not parts.hostname or parts.username or parts.password or parts.path not in ('','/') or parts.query or parts.fragment:
             raise GatewayRefused('VyOS API needs an https origin without path')
@@ -27,7 +27,9 @@ class VyosGateway:
         except (TypeError,ValueError):raise GatewayRefused('Allowed networks must be IPv4 CIDR') from None
         if not self.networks:raise GatewayRefused('Allowed networks missing')
         if type(timeout) not in (int,float) or not 0<timeout<=30:raise GatewayRefused('Timeout must be 0-30 seconds')
-        self.origin=origin.rstrip('/');self.key=api_key;self.timeout=timeout;self.opener=opener
+        if commit_timeout is None:commit_timeout=timeout
+        if type(commit_timeout) not in (int,float) or not 0<commit_timeout<=30:raise GatewayRefused('Commit timeout must be 0-30 seconds')
+        self.origin=origin.rstrip('/');self.key=api_key;self.timeout=timeout;self.commit_timeout=commit_timeout;self.opener=opener
         self.context=ssl.create_default_context(cafile=ca_file)
 
     def address(self,ip):
@@ -38,11 +40,11 @@ class VyosGateway:
         if not any(value in n for n in self.networks):raise GatewayRefused('Address outside guest networks')
         return str(value)
 
-    def call(self,endpoint,data):
+    def call(self,endpoint,data,timeout=None):
         body=urlencode({'data':json.dumps(data),'key':self.key}).encode()
         request=Request(self.origin+endpoint,data=body,method='POST',headers={'Content-Type':'application/x-www-form-urlencoded'})
         try:
-            with self.opener(request,timeout=self.timeout,context=self.context) as response:raw=response.read(ANSWER_LIMIT+1)
+            with self.opener(request,timeout=self.timeout if timeout is None else timeout,context=self.context) as response:raw=response.read(ANSWER_LIMIT+1)
         except HTTPError as error:
             with error:raw=error.read(ANSWER_LIMIT+1) if error.code==400 else b''
             if error.code in (401,403):raise GatewayRejected('VyOS API key refused') from None
@@ -73,7 +75,7 @@ class VyosGateway:
     def allow_many(self,ips):
         """One commit for many visitors; VyOS commits one at a time, so per-visitor calls fall behind at opening."""
         addresses=list(dict.fromkeys(self.address(ip) for ip in ips))
-        if addresses:self.call('/configure',[{'op':'set','path':BASE+['address',a]} for a in addresses])
+        if addresses:self.call('/configure',[{'op':'set','path':BASE+['address',a]} for a in addresses],timeout=self.commit_timeout)
         return addresses
 
     def revoke_many(self,ips):
@@ -81,7 +83,7 @@ class VyosGateway:
         addresses=list(dict.fromkeys(self.address(ip) for ip in ips))
         present=set(self.authorized()) if addresses else set()
         gone=[a for a in addresses if a in present]
-        if gone:self.call('/configure',[{'op':'delete','path':BASE+['address',a]} for a in gone])
+        if gone:self.call('/configure',[{'op':'delete','path':BASE+['address',a]} for a in gone],timeout=self.commit_timeout)
         return gone
 
     def revoke(self,ip):
