@@ -20,7 +20,7 @@ from unittest.mock import patch
 from cryptography.fernet import Fernet, InvalidToken
 from werkzeug.security import generate_password_hash
 
-from app import Service, create_app, uid, digest, timestamp
+from app import Service, create_app, uid, digest, timestamp, utc
 from jobs import housekeeping, monitor, notify, run_jobs, expire_backups
 from workflow_backup import backup_stream as backup
 from manage import initialize, add_admin, change_admin, mint_launch, unlock_login
@@ -238,14 +238,16 @@ class Tests(unittest.TestCase):
 
     def test_role_records(self):
         self.login('records')
-        self.assertEqual(self.get('/v1/admin/consents/export').status_code, 200)
+        r = self.get('/v1/admin/consents/export')
+        self.assertEqual((r.status_code, r.json['code']), (403, 'direct_export_retired'))
         self.assertEqual(self.get('/v1/admin/grants').status_code, 403)
         self.assertEqual(self.get('/v1/admin/settings').status_code, 403)
 
     def test_role_settings(self):
         self.login()
-        for path in ('/v1/admin/settings', '/v1/admin/users', '/v1/admin/grants', '/v1/admin/consents/export'):
+        for path in ('/v1/admin/settings', '/v1/admin/users', '/v1/admin/grants'):
             self.assertEqual(self.get(path).status_code, 200)
+        self.assertEqual(self.get('/v1/admin/consents/export').json['code'], 'direct_export_retired')
         self.assertNotIn('password', self.get('/v1/admin/users').get_data(as_text=True))
 
     def test_forged_launch_rejected(self):
@@ -402,22 +404,66 @@ class Tests(unittest.TestCase):
         for table in ('consents', 'grants', 'operations', 'contexts', 'launches', 'sessions', 'idempotency'):
             self.assertGreater(self.count(table), 0, table)
 
-    def test_export_is_audited_and_excludes_expired_records(self):
+    def archive_ready(self):
+        self.s.config['workflow_policy'] = {'approved': True, 'review_valid_seconds': 86400, 'cursor_valid_seconds': 900, 'export_row_limit': 100000,
+                                            'export_range_seconds': 2678400, 'owner_active_jobs': 1, 'heartbeat_seconds': 10,
+                                            'stale_after_seconds': 30, 'activation_grace_seconds': 60}
         self.consent(); self.login('records')
-        r = self.get('/v1/admin/consents/export')
-        self.assertEqual(r.status_code, 200)
-        self.assertNotIn('connection_ref', r.get_data(as_text=True))
         with self.s.db() as db:
-            self.assertTrue(db.execute("SELECT 1 FROM audit WHERE action='consents_export'").fetchone())
-        self.assertEqual(self.get('/v1/admin/consents/export?after=-1').status_code, 400)
+            event = db.execute('SELECT event_id FROM consents').fetchone()[0]
+        filters = {'event_id': event, 'accepted_start_utc': utc(self.clock.value - 3600), 'accepted_end_utc': utc(self.clock.value + 3600),
+                   'language': None, 'deadline_scope': 'all'}
+        r = self.post('/v1/admin/consent-archive-exports', {'filters': filters, 'retry_of': None})
+        self.assertEqual(r.status_code, 202, r.json)
+        from archive_repository import prepare_next
+        prepare_next(self.s)
+        job = self.get('/v1/admin/consent-archive-exports/' + r.json['export_id']).json
+        self.assertEqual(job['effective_state'], 'ready', job)
+        return job
 
-    def test_csv_formula_injection_escaped(self):
+    def test_fixed_csv_requires_another_administrator(self):
         # Deliberately create an unsafe version before the consent insert; DB records remain immutable.
         self.s.config['terms_version'] = '=1+1'
-        self.consent(); self.login('records')
-        r = self.get('/v1/admin/consents/export')
-        rows = list(csv.reader(io.StringIO(r.get_data(as_text=True).lstrip('\ufeff'))))
+        job = self.archive_ready()
+        path = '/v1/admin/consent-archive-exports/' + job['export_id']
+        sha, content = job['snapshot']['rows_sha256'], path + '/content?cursor=' + job['snapshot']['first_page_cursor']
+        self.assertIsNone(job['approval'])
+        r = self.get(content)
+        self.assertEqual((r.status_code, r.json['code']), (409, 'export_approval_required'))
+        r = self.post(path + '/approval', {'rows_sha256': sha})
+        self.assertEqual((r.status_code, r.json['code']), (403, 'export_self_approval'))
+        self.login('settings')
+        review = self.get(path + '/approval').json
+        self.assertEqual((review['owner_username'], review['total_count'], review['rows_sha256'], review['approval']), ('records', 1, sha, None))
+        r = self.post(path + '/approval', {'rows_sha256': '0' * 64})
+        self.assertEqual((r.status_code, r.json['code']), (409, 'export_approval_mismatch'))
+        r = self.post(path + '/approval', {'rows_sha256': sha})
+        self.assertEqual(r.status_code, 200, r.json)
+        self.assertIsNotNone(r.json['approval'])
+        r = self.post(path + '/approval', {'rows_sha256': sha})
+        self.assertEqual((r.status_code, r.json['code']), (409, 'export_already_approved'))
+        self.assertEqual(self.get(content).status_code, 404)  # the approver cannot download another owner's copy
+        self.login('records')
+        self.assertIsNotNone(self.get(path).json['approval'])
+        r = self.get(content)
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn('connection_ref', r.get_data(as_text=True))
+        rows = list(csv.reader(io.StringIO(r.get_data(as_text=True).lstrip('﻿'))))
         self.assertEqual(rows[1][2], "'=1+1")
+        with self.s.db() as db:
+            self.assertTrue(db.execute("SELECT 1 FROM audit WHERE action='consent_archive_approved' AND object_id=?", (job['export_id'],)).fetchone())
+
+    def test_disabled_approver_no_longer_counts(self):
+        job = self.archive_ready()
+        path = '/v1/admin/consent-archive-exports/' + job['export_id']
+        self.login('settings')
+        self.assertEqual(self.post(path + '/approval', {'rows_sha256': job['snapshot']['rows_sha256']}).status_code, 200)
+        with self.s.db(True) as db:
+            db.execute("UPDATE admins SET enabled=0 WHERE username='settings'")
+        self.login('records')
+        self.assertIsNone(self.get(path).json['approval'])
+        r = self.get(path + '/content?cursor=' + job['snapshot']['first_page_cursor'])
+        self.assertEqual(r.json['code'], 'export_approval_required')
 
 
 
