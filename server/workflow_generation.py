@@ -97,6 +97,14 @@ def runtime_observations(s,db):
                           seen_at_utc=__import__('app').utc(value['seen_at']) if valid else None)
     return result
 
+@contextmanager
+def stopped_config_change(s):
+    # Every config.json writer: service stopped, one target operation at a time, no retained incomplete operation.
+    from recovery_kit import stopped
+    with stopped(s.home),target_lock(s.home):
+        require_runtime_ready(s)
+        yield
+
 def release_recovery(home):
     from recovery_kit import stopped
     home=Path(home).resolve()

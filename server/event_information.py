@@ -55,11 +55,11 @@ def make_plan(s,data,expected):
 
 def apply_plan(s,plan):
     from app import Service,uid
-    from recovery_kit import stopped
+    from workflow_generation import stopped_config_change
     expected={'format','created_at','target_hash','config_sha256','values','production_enabled','automatic_deletion_enabled'}
     if not isinstance(plan,dict) or set(plan)!=expected or plan['format']!='festival-event-information-v1' or plan['production_enabled'] is not False or plan['automatic_deletion_enabled'] is not False:raise ValueError('Invalid information plan')
     if plan['target_hash']!=hashlib.sha256(str(s.home).encode()).hexdigest():raise ValueError('Plan target mismatch')
-    with stopped(s.home):
+    with stopped_config_change(s):
         checked=make_plan(s,plan['values'],plan['config_sha256']);original=(s.home/'config.json').read_bytes();updated=json.loads(original)
         if hashlib.sha256(original).hexdigest()!=plan['config_sha256']:raise ValueError('Configuration changed')
         values=checked['values'];updated['event_information']={key:values[key] for key in (*TEXT_LIMITS,'period_confirmed')}
