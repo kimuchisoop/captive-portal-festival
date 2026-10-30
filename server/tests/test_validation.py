@@ -4,11 +4,10 @@ ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import io,json,os,tarfile,unittest
 from unittest.mock import patch
 from cryptography.fernet import Fernet
-from recovery_kit import safe_name,consume,source_files,restore_kit
+from recovery_kit import safe_name,consume,source_files
 from stream_encryption import Writer
-from stream_backup import backup_stream,restore_stream
+from workflow_backup import backup_stream
 from backup_review import inspect_file
-from migrations import upgrade_to_v4
 from filesystem_guard import is_link
 from mysql_fixture import new_database
 import test_service as service_tests
@@ -41,14 +40,11 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'member'): consume(path,key)
     def test_inspect_proof_bound_before_decryption(self):
         source=backup_stream(self.s)
-        from stream_backup import file_hash
+        from filesystem_guard import file_hash
         proofs=iter(['a','b'])
         def changed(path): return next(proofs) if Path(path)==source else file_hash(path)
-        with patch('stream_backup.file_hash',side_effect=changed):
+        with patch('backup_review.file_hash',side_effect=changed):
             with self.assertRaisesRegex(ValueError,'Source changed'): inspect_file(self.s,source.name)
-    def test_upgrade_refuses_running_supervisor(self):
-        runtime=self.home/'runtime';runtime.mkdir();(runtime/'current.json').write_text('{"state":"running"}')
-        with self.assertRaisesRegex(ValueError,'Stop app'): upgrade_to_v4(self.s.db_settings,self.home)
     def test_windows_junction_is_refused_without_reading_external_files(self):
         if os.name!='nt': self.skipTest('Windows junction')
         import subprocess

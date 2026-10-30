@@ -110,10 +110,9 @@ class ReviewFixTests(unittest.TestCase):
         self.assertTrue(result['total_bytes_complete']);self.assertEqual(len(result['items']),1)
         self.assertEqual(partial.read_bytes(),b'b'*30);self.assertEqual(other.read_bytes(),b'c'*7)
 
-    def test_filename_breaks_pagination_ties_between_formats(self):
+    def test_filename_breaks_pagination_ties_at_the_same_time(self):
         directory=self.home/'backups';directory.mkdir(exist_ok=True)
-        base=f'backup-{self.s.now()}-{uid()}'
-        names={base+'.fernet',base+'.sffbackup'}
+        names={f'backup-{self.s.now()}-{uid()}.sffbackup' for _ in range(2)}
         for name in names:(directory/name).write_bytes(b'catalog fixture')
         first=backup_inventory(self.s,limit=1)
         second=backup_inventory(self.s,before=first['next_cursor'],limit=1)

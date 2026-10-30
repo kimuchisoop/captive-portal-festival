@@ -104,8 +104,8 @@ class HardeningTests(unittest.TestCase):
         with self.assertRaises(ValueError): apply_plan(self.s,make_plan(self.s))
     def test_capacity_warning_and_resolution_keep_records(self):
         self.s.config.update(db_warning_bytes=1,backup_warning_bytes=1)
-        from jobs import backup
-        backup(self.s);monitor(self.s)
+        from workflow_backup import backup_stream
+        backup_stream(self.s);monitor(self.s)
         with self.s.db() as db:
             self.assertEqual(db.execute("SELECT state FROM notifications WHERE code='database_size_high'").fetchone()[0],'open')
         self.s.config.update(db_warning_bytes=2**60,backup_warning_bytes=2**60);monitor(self.s)

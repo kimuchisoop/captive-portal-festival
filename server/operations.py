@@ -14,7 +14,7 @@ from pathlib import Path
 from flask import g, jsonify, request
 from database import Connection, DatabaseError, connect
 
-BACKUP_NAME = re.compile(r'^backup-(\d{1,12})-([0-9a-f-]{36})\.(?:fernet|sffbackup)$')
+BACKUP_NAME = re.compile(r'^backup-(\d{1,12})-([0-9a-f-]{36})\.sffbackup$')
 ACTIONS = {
     'event_information_plan_saved':'案内情報の変更案を保存','event_information_change_requested':'案内情報の変更要求','event_information_changed':'案内情報を変更',
     'recovery_kit_created':'暗号化した復旧用一式を作成',
@@ -111,7 +111,7 @@ def backup_inventory(s, before=None, limit=50):
     directory=s.home/'backups'
     totals=dict(total_files=0,completed_bytes=0,partial_files=0,partial_bytes=0,
                 other_regular_files=0,other_regular_bytes=0,ignored_entries=0,
-                unreadable_entries=0,directory_scan_complete=True,max_legacy_bytes=0)
+                unreadable_entries=0,directory_scan_complete=True)
     cursor=None
     if before:
         match=BACKUP_NAME.fullmatch(before);cursor=(int(match[1]),match[2],before)
@@ -135,9 +135,6 @@ def backup_inventory(s, before=None, limit=50):
                     if (not stat.S_ISREG(info.st_mode) or
                         getattr(info,'st_file_attributes',0)&getattr(stat,'FILE_ATTRIBUTE_REPARSE_POINT',0x400)):
                         totals['ignored_entries']+=1;continue
-                    # Preserve the old *.fernet warning scope, including renamed files.
-                    if entry.name.endswith('.fernet'):
-                        totals['max_legacy_bytes']=max(totals['max_legacy_bytes'],info.st_size)
                     partial=entry.name.endswith('.partial')
                     match=BACKUP_NAME.fullmatch(entry.name[:-8] if partial else entry.name)
                     try:

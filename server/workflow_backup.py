@@ -4,8 +4,7 @@ import hashlib,json,os,re,shutil
 from app import ROOT,uid,utc
 from database import transaction,initialize_schema
 from stream_encryption import Writer,open_reader
-from stream_backup import file_hash
-from filesystem_guard import regular,is_link
+from filesystem_guard import regular,is_link,file_hash
 from security import protect_directory
 from jobs import secure_new_file,set_meta
 from workflow_common import canonical,strict_json,sha,private_dir,read_private,validate,API

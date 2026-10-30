@@ -6,8 +6,7 @@ from cryptography.fernet import Fernet
 from jobs import secure_new_file
 from security import protect_directory
 from stream_encryption import Writer,open_reader
-from stream_backup import backup_stream,file_hash
-from filesystem_guard import is_link,regular
+from filesystem_guard import is_link,regular,file_hash
 
 ROOT_FILES={'config.json','terms.ja.txt','terms.en.txt','device-profile.json','session.key','backup.key','mfa.key'}
 DIRECTORIES={'backups','runtime','support-reports','diagnostics','configuration-history','configuration-imports','restore-history','migration-history'}
@@ -97,13 +96,13 @@ def consume(path,key,destination=None):
         # tar EOF is not encrypted EOF: consume padding and authenticate the terminal frame.
         while block:=decrypted.read(1024*1024):
             if any(block): raise ValueError('Data after tar EOF')
-    if (not isinstance(manifest,dict) or manifest.get('format') not in ('festival-recovery-kit-v1','festival-recovery-kit-v2')
+    if (not isinstance(manifest,dict) or manifest.get('format')!='festival-recovery-kit-v2'
         or manifest.get('files')!=seen or 'database.sffbackup' not in seen
         or any('files/'+name not in seen for name in ('config.json','backup.key','mfa.key','session.key','terms.ja.txt','terms.en.txt'))): raise ValueError('Incomplete recovery kit')
     return manifest
 
 def create_kit(s,output,key_directory):
-    from app import uid
+    from workflow_backup import backup_stream
     output=Path(output).resolve();key_directory=Path(key_directory).resolve()
     if output.exists() or output.is_relative_to(s.home) or key_directory.is_relative_to(s.home): raise ValueError('Use NEW locations outside the data directory')
     if key_directory==output.parent or key_directory.is_relative_to(output.parent): raise ValueError('Key directory must be separate from archive directory')
@@ -134,24 +133,3 @@ def create_kit(s,output,key_directory):
         consume(partial,key);os.rename(partial,output)
         with s.db(True) as db: s.audit(db,'local_cli','recovery_kit_created')
     return dict(status='verified',files=len(inventory),ciphertext_bytes=output.stat().st_size,ciphertext_sha256=file_hash(output),key_stored_separately=True)
-
-def restore_kit(source,key_path,destination,settings):
-    from app import uid
-    from stream_backup import restore_stream,inspect,compare_restored
-    from manage import initialize
-    destination=Path(destination).resolve()
-    if destination.exists(): raise ValueError('Restore destination must not exist')
-    from filesystem_guard import regular
-    regular(source);regular(key_path)
-    key=Path(key_path).read_bytes();proof=file_hash(source);consume(source,key)
-    if file_hash(source)!=proof: raise ValueError('Recovery source changed during verification')
-    evidence=destination.with_name(destination.name+'-evidence-'+uid());evidence.mkdir(mode=0o700);protect_directory(evidence)
-    secure_new_file(evidence/'recovery.incomplete',b'restore pending')
-    manifest=consume(source,key,evidence)
-    if file_hash(source)!=proof: raise ValueError('Recovery source changed')
-    snapshot=evidence/'database.sffbackup';backup_key=evidence/'files/backup.key'
-    summary=inspect(snapshot,backup_key.read_bytes());restore_stream(snapshot,backup_key,destination,settings)
-    recovered=initialize(destination,restored=True);compare_restored(recovered,summary)
-    secure_new_file(evidence/'restore-result.json',json.dumps(dict(status='verified',files=len(manifest['files']),database_schema=4,intake_enabled=False,original_files_preserved=True)).encode())
-    (evidence/'recovery.incomplete').unlink()
-    return dict(status='verified',evidence_directory=str(evidence),database_schema=4,files=len(manifest['files']),intake_enabled=False,ap_adapter='disconnected')

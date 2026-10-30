@@ -45,8 +45,6 @@ def initialize(home,sample=False,restored=False,db_settings=None,maintenance_fil
     return Service(home) if open_service else None
 
 def register(sub):
-    upgrade=sub.add_parser('upgrade-schema5',help='Stopped explicit additive 4-to-5 candidate; retain all failures')
-    upgrade.add_argument('--maintenance-db-config',type=Path,required=True)
     prepare=sub.add_parser('prepare-event-plan-import',help='Prepare retained evidence for a legacy basename')
     prepare.add_argument('--source-basename',required=True)
     apply=sub.add_parser('apply-reviewed-plan',help='Stopped application of a DB-registered independently reviewed plan')
@@ -105,9 +103,6 @@ def handle(args):
     elif command=='reconcile-workflow-policy':
         from workflow_policy_cli import reconcile
         result=reconcile(args.home)
-    elif command=='upgrade-schema5':
-        from workflow_database import migrate
-        result=migrate(args.home,args.maintenance_db_config)
     elif command=='release-schema5-recovery':
         from workflow_generation import release_recovery
         result=release_recovery(args.home)
