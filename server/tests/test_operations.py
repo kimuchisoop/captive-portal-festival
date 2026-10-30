@@ -132,7 +132,7 @@ class OperationalTests(unittest.TestCase):
         with self.s.db() as db: before=[r[0] for r in db.execute('SHOW GRANTS FOR CURRENT_USER').fetchall()]
         r=self.post('/v1/admin/diagnostics');self.assertEqual(r.status_code,200,r.json)
         self.assertFalse(r.json['mutation_performed']);self.assertFalse(r.json['production_ready'])
-        self.assertTrue(r.json['audit_saved']);self.assertFalse(r.json['privilege_review']['minimal'])
+        self.assertTrue(r.json['audit_saved']);self.assertTrue(r.json['privilege_review']['minimal'],r.json['privilege_review'])  # tests run with the generated least-privilege account
         self.assertTrue((self.home/'diagnostics'/(r.json['report_id']+'.json')).exists())
         self.assertNotIn(self.s.db_settings['password'],r.get_data(as_text=True))
         with self.s.db() as db:

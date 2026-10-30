@@ -11,7 +11,7 @@ import io
 import json
 import secrets
 from database import DatabaseError
-from mysql_fixture import new_database, PreservedDirectory, init_home
+from mysql_fixture import new_database, PreservedDirectory, init_home, privileged
 import tempfile
 import time
 import unittest
@@ -306,7 +306,8 @@ class Tests(unittest.TestCase):
     def test_db_accepted_is_not_connected_and_expiry_not_extended(self):
         grant = self.consent()['grant_id']
         deadline = self.clock.value + 60
-        with self.s.db(True) as db:
+        # AP-side acceptance is not written by the service account (no adapter yet); simulate it.
+        with privileged(self.s.db_settings) as db:
             db.execute("UPDATE grants SET authorization_status='accepted',authorized_at=?,original_expires_at=?,observation_state='active',last_observed_at=? WHERE id=?",
                        (self.clock.value, deadline, self.clock.value, grant))
         r = self.get('/v1/grants/' + grant)
@@ -461,7 +462,7 @@ class Tests(unittest.TestCase):
 
     def test_old_authorization_observation_is_marked_stale(self):
         grant = self.consent()['grant_id']
-        with self.s.db(True) as db:
+        with privileged(self.s.db_settings) as db:
             db.execute("UPDATE grants SET observation_state='active',last_observed_at=? WHERE id=?", (self.clock.value - 30, grant))
         r = self.get('/v1/grants/' + grant).json
         self.assertEqual(r['observation_state'], 'stale')
@@ -470,11 +471,10 @@ class Tests(unittest.TestCase):
     def test_nonempty_mysql_database_cannot_activate_partial_initialization(self):
         self.consent()
         other=Path(self.temp.name)/'invalid-reuse'
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError,'not empty'):
             init_home(other,settings=self.s.db_settings)
-        with self.assertRaises(ValueError):
-            Service(other)
-        self.assertTrue((other/'initialization.incomplete').exists())
+        # The read-only precheck refuses before any data folder exists.
+        self.assertFalse(other.exists())
         self.assertEqual(self.count('consents'),1)
 
     def test_operator_deletion_stop_cannot_be_enabled_in_configuration(self):

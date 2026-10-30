@@ -41,10 +41,34 @@ def maintenance_file(settings):
     secure_new_file(path,json.dumps({**settings,'user':c['maintenance_user'],'password':c['maintenance_password']}).encode())
     return path
 
+def root_execute(statements):
+    c,_=credentials()
+    raw=mysql.connector.connect(**{k:c[k] for k in ('host','port','user','password')},use_pure=True)
+    try:
+        cursor=raw.cursor()
+        for statement in statements:cursor.execute(statement.rstrip(';'))
+        cursor.close()
+    finally:raw.close()
+
+def privileged(settings):
+    """Test-only write access for simulating AP-side state the service account may not write."""
+    c,_=credentials()
+    from database import transaction
+    return transaction({**settings,'user':c['user'],'password':c['password']},True)
+
 def init_home(home,sample=False,settings=None):
+    """Initialize like production: separate maintenance account, then a service account holding only the generated grants."""
     from workflow_cli import initialize
-    settings=settings or new_database()
-    return initialize(home,sample,db_settings=settings,maintenance_file=maintenance_file(settings))
+    from app import Service
+    if settings is not None:return initialize(home,sample,db_settings=settings,maintenance_file=maintenance_file(settings))
+    c,_=credentials();settings=new_database()
+    sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'tools'));import mysql_grants
+    user='svc_'+secrets.token_hex(6);password=secrets.token_urlsafe(18);host=c.get('service_host','%')
+    root_execute(["CREATE USER '"+user+"'@'"+host+"' IDENTIFIED BY '"+password+"'"])
+    runtime={**settings,'user':user,'password':password}
+    initialize(home,sample,db_settings=runtime,maintenance_file=maintenance_file(runtime),open_service=False)
+    root_execute(mysql_grants.runtime_statements(settings['database'],user,host))
+    return Service(home)
 
 class PreservedDirectory:
     def __init__(self):
