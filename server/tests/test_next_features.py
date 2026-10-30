@@ -8,7 +8,9 @@ import json
 import secrets
 import shutil
 import unittest
+from unittest.mock import patch
 from cryptography.fernet import Fernet
+import app
 from app import Service,uid,digest
 from database import initialize_schema,transaction
 from jobs import backup,monitor,notify,restore,LEGACY_TABLES
@@ -94,6 +96,7 @@ class NextFeaturesTests(unittest.TestCase):
 
     def test_terms_publish_conflict_and_old_consent_preserved(self):
         consent=self.consent();old_terms=self.s.terms('ja');old_payload=self.consent_data()
+        self.assertEqual(self.get('/v1/public').json['terms']['text'],old_terms['text'])  # holds the short public copy
         self.login();r=self.draft();first=self.publish(r,key=uid())
         self.assertEqual(first.status_code,201,first.json)
         self.assertEqual(self.s.terms('ja')['document_id'],r['id'])
@@ -106,6 +109,24 @@ class NextFeaturesTests(unittest.TestCase):
             self.assertEqual(saved['terms_sha256'],old_terms['sha256'])
         self.visitor()
         self.assertEqual(self.post('/v1/consents',old_payload).status_code,409)
+
+    def test_public_terms_shared_briefly(self):
+        with patch.object(self.s,'terms',wraps=self.s.terms) as read, patch('app.time.monotonic',return_value=1000.0) as now:
+            for _ in range(3): self.assertEqual(self.get('/v1/public').status_code,200)
+            self.assertEqual(read.call_count,1)
+            self.get('/v1/public?lang=en');self.assertEqual(read.call_count,2)  # each language has its own copy
+            now.return_value=1000.0+app.PUBLIC_TERMS_SECONDS
+            self.get('/v1/public');self.assertEqual(read.call_count,3)
+            self.s.forget_public_terms()
+            self.get('/v1/public');self.assertEqual(read.call_count,4)
+
+    def test_server_threads_validated(self):
+        for value in (0,65,'8',True,4.0):
+            self.s.config['server_threads']=value
+            with self.assertRaisesRegex(ValueError,'Invalid server_threads'): self.s.validate_config()
+        for value in (1,64):
+            self.s.config['server_threads']=value;self.s.validate_config()
+        del self.s.config['server_threads'];self.s.validate_config()
 
     def test_terms_mismatched_preview_rejected(self):
         self.login();r=self.draft();r['preview_sha256']='0'*64

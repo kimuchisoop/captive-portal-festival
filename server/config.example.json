@@ -8,6 +8,8 @@
   "service_window_id": null,
   "service_start_utc": null,
   "service_end_utc": null,
+  "daily_service_hours": null,
+  "server_threads": 4,
   "policy_version": null,
   "terms_document_id": null,
   "terms_version": null,

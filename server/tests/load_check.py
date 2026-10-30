@@ -1,8 +1,8 @@
 """Local load check: raw throughput of the visitor consent flow against a disposable MySQL.
 
-Usage: WIFI_TEST_MYSQL_CONFIG=<test config> python tests/load_check.py [visitors] [concurrency]
+Usage: WIFI_TEST_MYSQL_CONFIG=<test config> python tests/load_check.py [visitors] [concurrency] [server_threads]
 
-The server runs as in production (waitress, 4 threads) in a separate process. The session
+The server runs as in production (waitress, server_threads from config, default 4) in a separate process. The session
 admission limits in session_guard.py are lifted inside that process only, so the numbers show
 what the application and MySQL can process, not what the admission limits allow. Launch links
 are minted directly in the database here; on site they would come from the AP integration.
@@ -21,11 +21,11 @@ sys.argv=['manage.py','--home',{home!r},'serve']
 import manage;manage.main()
 '''
 
-def main(visitors=600,concurrency=32):
+def main(visitors=600,concurrency=32,server_threads=4):
     home=Path(PreservedDirectory().name)/'load-data';init_home(home,sample=True)
     with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
     origin='http://127.0.0.1:'+str(port)
-    config=json.loads((home/'config.json').read_text(encoding='utf-8'));config['origin']=origin
+    config=json.loads((home/'config.json').read_text(encoding='utf-8'));config['origin']=origin;config['server_threads']=server_threads
     (home/'config.json').write_text(json.dumps(config),encoding='utf-8')
     s=Service(home)
     process=subprocess.Popen([sys.executable,'-c',SERVER.format(root=str(ROOT),home=str(home))],
@@ -82,10 +82,10 @@ def main(visitors=600,concurrency=32):
     finally:
         process.terminate();process.wait(30)
     consents=len([1 for _ in timings.get('consent',[])])-sum(v for k,v in errors.items() if k.startswith('consent '))
-    report=dict(visitors=visitors,concurrency=concurrency,elapsed_seconds=round(elapsed,1),
+    report=dict(visitors=visitors,concurrency=concurrency,server_threads=server_threads,elapsed_seconds=round(elapsed,1),
                 completed_consents=consents,consents_per_minute=round(consents/elapsed*60),errors=errors,
                 latency_ms={name:dict(count=len(v),p50=round(statistics.median(v)*1000),p95=round(sorted(v)[int(len(v)*.95)-1]*1000),
                                       max=round(max(v)*1000)) for name,v in timings.items()},data=str(home))
     print(json.dumps(report,ensure_ascii=False,indent=2))
 
-if __name__=='__main__':main(*(int(v) for v in sys.argv[1:3]))
+if __name__=='__main__':main(*(int(v) for v in sys.argv[1:4]))
