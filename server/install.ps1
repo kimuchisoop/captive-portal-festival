@@ -17,4 +17,4 @@ $initArgs = @((Join-Path $packageRoot 'manage.py'), '--home', $dataPath, 'init',
 if ($SamplePolicy) { $initArgs += '--sample-policy' }
 & $pythonPath @initArgs
 if ($LASTEXITCODE -ne 0) { throw 'Initialization failed. Do not reuse a partially initialized directory.' }
-Write-Output 'Local service installed. See README.md to create an administrator and start the service.'
+Write-Output 'Local service installed. See docs/ガイド.md to create an administrator and start the service.'
