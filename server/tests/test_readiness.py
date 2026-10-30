@@ -6,11 +6,12 @@ import hashlib,json,shutil,unittest
 from unittest.mock import patch
 from cryptography.fernet import Fernet
 from app import uid,timestamp,Service
-from jobs import backup,V3_TABLES,notify
-from database import DatabaseError,initialize_schema,transaction
-from backup_review import backup_path,decrypt_check,restore_check
+from jobs import notify
+from workflow_backup import backup_stream as backup
+from database import DatabaseError,transaction
+from backup_review import backup_path,decrypt_check
+from stream_encryption import Writer
 from deployment_plan import inspect_plan,render_closed_config,write_plan
-from migrations import upgrade_to_v4
 from mysql_fixture import new_database
 import test_service as service_tests
 
@@ -61,7 +62,7 @@ class ReadinessTests(unittest.TestCase):
         result=decrypt_check(self.s,path.name,key_file=wrong)
         self.assertEqual(result['status'],'failed');self.assertEqual(result['code'],'authentication_failed')
         damaged=bytearray(path.read_bytes());damaged[-20]^=1
-        second=path.parent/('backup-'+str(self.s.now())+'-'+uid()+'.fernet');second.write_bytes(damaged)
+        second=path.parent/('backup-'+str(self.s.now())+'-'+uid()+'.sffbackup');second.write_bytes(damaged)
         self.assertEqual(decrypt_check(self.s,second.name)['status'],'failed')
         self.assertTrue(path.exists());self.assertEqual(self.count('backup_checks'),2)
 
@@ -74,8 +75,9 @@ class ReadinessTests(unittest.TestCase):
 
     def test_authenticated_but_malformed_snapshot_records_failure(self):
         directory=self.home/'backups';directory.mkdir(exist_ok=True)
-        file=directory/('backup-'+str(self.s.now())+'-'+uid()+'.fernet')
-        file.write_bytes(Fernet((self.home/'backup.key').read_bytes()).encrypt(b'[]'))
+        file=directory/('backup-'+str(self.s.now())+'-'+uid()+'.sffbackup')
+        with file.open('xb') as handle:
+            writer=Writer(handle,(self.home/'backup.key').read_bytes());writer.write(b'[]\n');writer.finish()
         self.login('records')
         result=self.post('/v1/admin/backups/'+file.name+'/checks')
         self.assertEqual(result.status_code,201,result.json)
@@ -87,7 +89,7 @@ class ReadinessTests(unittest.TestCase):
         self.login('records')
         self.assertEqual(self.post('/v1/admin/backups/not-a-backup/checks').status_code,400)
         with patch('backup_review.is_link',return_value=True):
-            with self.assertRaises(ValueError): backup_path(self.s,'backup-1-'+uid()+'.fernet')
+            with self.assertRaises(ValueError): backup_path(self.s,'backup-1-'+uid()+'.sffbackup')
 
     def test_admin_changes_invalidate_pending_mfa_sessions(self):
         from manage import change_admin
@@ -102,19 +104,6 @@ class ReadinessTests(unittest.TestCase):
         path=backup(self.s);decrypt_check(self.s,path.name)
         with self.assertRaises(DatabaseError):
             with self.s.db(True) as db: db.execute("UPDATE backup_checks SET status='failed'")
-
-
-    def test_restore_check_refuses_original_and_preserves_nonempty_target(self):
-        path=backup(self.s)
-        with self.assertRaises(ValueError): restore_check(self.s,path.name,self.home.parent/'same-source',self.s.db_settings)
-        target=new_database()
-        with transaction(target,True) as db:
-            db.execute('CREATE TABLE keep_me (value BIGINT)');db.execute('INSERT INTO keep_me VALUES (42)')
-        destination=self.home.parent/'nonempty-target'
-        result=restore_check(self.s,path.name,destination,target)
-        self.assertEqual(result['status'],'failed');self.assertFalse(destination.exists())
-        with transaction(target) as db: self.assertEqual(db.execute('SELECT value FROM keep_me').fetchone()[0],42)
-
 
 
     def test_support_summary_omits_secrets_free_text_and_targets(self):

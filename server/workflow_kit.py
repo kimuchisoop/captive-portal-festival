@@ -4,7 +4,7 @@ import os
 from app import uid
 from jobs import secure_new_file
 from recovery_kit import consume
-from stream_backup import file_hash
+from filesystem_guard import file_hash
 from security import protect_directory
 from workflow_common import canonical
 
@@ -13,8 +13,7 @@ def restore_kit(source,key_file,destination,runtime,maintenance_file):
     from workflow_backup import restore
     regular(source);regular(key_file);source=Path(source);destination=Path(destination).resolve()
     if destination.exists():raise ValueError('Destination exists')
-    key=Path(key_file).read_bytes();proof=file_hash(source);manifest=consume(source,key)
-    if manifest['format']!='festival-recovery-kit-v2':raise ValueError('Use the matching old release for legacy recovery')
+    key=Path(key_file).read_bytes();proof=file_hash(source);consume(source,key)
     evidence=destination.with_name(destination.name+'-evidence-'+uid());evidence.mkdir(mode=0o700);protect_directory(evidence)
     secure_new_file(evidence/'recovery.incomplete',canonical(dict(source_sha256=proof)))
     consume(source,key,evidence)

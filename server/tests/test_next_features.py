@@ -3,20 +3,17 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT),str(ROOT/'.deps')]
 import base64
-import hashlib
 import json
 import secrets
-import shutil
 import unittest
 from unittest.mock import patch
 from cryptography.fernet import Fernet
 import app
 from app import Service,uid,digest
-from database import initialize_schema,transaction
-from jobs import backup,monitor,notify,restore,LEGACY_TABLES
+from database import transaction
+from jobs import monitor,notify
 from manage import initialize
 from mfa import enroll,totp
-from migrations import upgrade_to_v4 as upgrade_from_v2
 from operator_features import sample_storage,storage_history
 from mysql_fixture import new_database
 import test_service as service_tests
@@ -209,13 +206,7 @@ class NextFeaturesTests(unittest.TestCase):
         secret,_=self.setup_mfa();self.clock.value+=121
         self.assertEqual(self.post('/v1/admin/mfa',dict(code=totp(secret,self.clock.value//30))).status_code,403)
 
-    def legacy(self):
-        settings=new_database();initialize_schema(settings,ROOT/'schema-v2.sql')
-        home=self.home.parent/('legacy-'+uid());shutil.copytree(self.home,home)
-        (home/'mysql.json').write_text(json.dumps(settings),encoding='utf-8')
-        with transaction(settings,True) as db:
-            db.execute('INSERT INTO audit VALUES (?,?,?,?,?,?)',(uid(),'local_cli','legacy_log',None,self.s.now(),self.s.now()+100))
-        return settings,home
+
 
 
 

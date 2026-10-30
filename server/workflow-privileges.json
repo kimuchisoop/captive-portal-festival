@@ -17,10 +17,6 @@
       "delete_reason": null,
       "basis": [
         "jobs.py:17",
-        "jobs.py:214",
-        "migrations.py:26",
-        "migrations.py:59",
-        "stream_backup.py:114",
         "usage_summary.py:15",
         "usage_summary.py:41"
       ]
@@ -139,17 +135,18 @@
         "authorization_status",
         "revocation_state",
         "revoked_at",
-        "row_version"
+        "row_version",
+        "authorized_at",
+        "original_expires_at"
       ],
       "delete": false,
       "delete_reason": null,
       "basis": [
         "app.py:502",
         "app.py:582",
-        "jobs.py:220",
         "jobs.py:38",
         "jobs.py:47",
-        "stream_backup.py:123"
+        "network_access.py:run_batch"
       ]
     },
     {
@@ -159,16 +156,16 @@
       "update_columns": [
         "status",
         "attempts",
-        "last_error_code"
+        "last_error_code",
+        "next_attempt"
       ],
       "delete": false,
       "delete_reason": null,
       "basis": [
         "app.py:218",
-        "jobs.py:221",
         "jobs.py:40",
         "jobs.py:45",
-        "stream_backup.py:124"
+        "network_access.py:run_batch"
       ]
     },
     {
@@ -262,11 +259,9 @@
       "delete": false,
       "delete_reason": null,
       "basis": [
-        "jobs.py:225",
         "mfa.py:36",
         "mfa.py:47",
-        "mfa.py:67",
-        "stream_backup.py:125"
+        "mfa.py:67"
       ]
     },
     {
