@@ -60,6 +60,18 @@ def change_admin(s, username, role=None, disable=False, password_hash=None):
         s.audit(db, 'local_cli', 'admin_changed', a['id'])
 
 
+def unlock_login(s, username):
+    # Local terminal recovery for a login lock; no network path can clear one.
+    with s.db(True) as db:
+        a = db.execute('SELECT id FROM admins WHERE username=?', (username.strip().lower(),)).fetchone()
+        if not a:
+            raise ValueError('Unknown administrator')
+        user_bucket = s.pseudonym('user:' + username.strip().lower())
+        db.execute('DELETE FROM login_limits WHERE bucket=? OR bucket LIKE ? OR bucket=?',
+                   (user_bucket, user_bucket + ':%', s.pseudonym('mfa:' + a['id'])))
+        s.audit(db, 'local_cli', 'login_unlocked', a['id'])
+
+
 def mint_launch(s):
     s.intake()
     raw = __import__('secrets').token_urlsafe(32)
@@ -122,6 +134,8 @@ def main():
     mfa_add.add_argument('username')
     mfa_reset=sub.add_parser('reset-mfa',help='Local terminal recovery; audited and invalidates sessions')
     mfa_reset.add_argument('username')
+    unlock=sub.add_parser('unlock-login',help='Local terminal recovery; clears login and MFA attempt limits for one administrator; audited')
+    unlock.add_argument('username')
     args = p.parse_args()
     from workflow_cli import handle as handle_workflow_cli
     if handle_workflow_cli(args): return
@@ -202,6 +216,9 @@ def main():
         from mfa import reset
         reset(s,args.username.strip().lower())
         print('Additional authentication reset and audited. Re-enroll before normal operation.')
+    elif args.command=='unlock-login':
+        unlock_login(s,args.username)
+        print('Login attempt limits cleared and audited.')
     elif args.command=='verify-backup':
         from backup_review import decrypt_check
         result=decrypt_check(s,args.filename,key_file=args.key_file)

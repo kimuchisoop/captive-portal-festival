@@ -217,7 +217,7 @@ class Service:
         return self.pseudonym('csrf:' + raw)
 
     def new_session(self, db, kind, owner):
-        require_storage_capacity(db)
+        require_storage_capacity(db, self.now(), kind)
         raw = secrets.token_urlsafe(32)
         ttl = self.config['admin_session_seconds' if kind.startswith('admin') else 'visitor_session_seconds']
         db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',
@@ -498,7 +498,11 @@ def create_app(home, clock=time.time):
         if len(data['username']) > 80 or len(data['password']) > 256:
             raise ApiError('credentials_invalid', 401)
         name = data['username'].strip().lower()
-        buckets = [(s.pseudonym('user:' + name), 5), (s.pseudonym('ip:' + (request.remote_addr or '')), 100)]
+        user_bucket = s.pseudonym('user:' + name)
+        source_bucket = s.pseudonym('ip:' + (request.remote_addr or ''))
+        # The 5-try lock is per name and source, so another source cannot lock an
+        # administrator out; the per-name total still stops distributed guessing.
+        buckets = [(user_bucket + ':' + source_bucket, 5), (user_bucket, 50), (source_bucket, 100)]
         limited = False
         valid = False
         with s.db(True) as db:
@@ -519,7 +523,7 @@ def create_app(home, clock=time.time):
                     if needs_mfa:
                         db.execute('UPDATE sessions SET expires_at=? WHERE token_hash=?',(s.now()+120,digest(raw)))
                     else: s.audit(db, a['id'], 'login')
-                    db.execute('DELETE FROM login_limits WHERE bucket=?', (buckets[0][0],))
+                    db.execute('DELETE FROM login_limits WHERE bucket IN (?,?)', (buckets[0][0], buckets[1][0]))
                 else:
                     for bucket, _ in buckets:
                         db.execute('INSERT INTO login_limits VALUES (?,1,?) ON DUPLICATE KEY UPDATE count=count+1',

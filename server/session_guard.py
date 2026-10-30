@@ -1,7 +1,8 @@
-"""Bounded, process-local bootstrap admission plus a retained-row safety ceiling.
+"""Bounded, process-local bootstrap admission plus a live-session safety ceiling.
 
 Local candidate defaults, not approved festival capacity values. No persistent
-rate records, raw addresses, background work, automatic retries or record purges.
+rate records, raw addresses, background work or automatic retries. Expired
+session rows are authentication state, not records, and are reclaimed on issue.
 """
 from collections import deque, OrderedDict
 import math
@@ -15,6 +16,10 @@ ISSUE_SOURCE_LIMIT = 20
 ISSUE_GLOBAL_LIMIT = 120
 SOURCE_SLOTS = 2048
 MAX_RETAINED_SESSION_ROWS = 100000
+# Visitors cannot fill the last slots, so administrators can still sign in.
+ADMIN_RESERVED_SESSION_ROWS = 1000
+# Removed per issue; well above ISSUE_GLOBAL_LIMIT, so reclaiming keeps pace.
+EXPIRED_SESSION_PURGE_BATCH = 500
 
 
 class GuardRejected(Exception):
@@ -78,10 +83,15 @@ class SessionIssueGuard:
                                    'session_issue_rate_limited')
 
 
-def require_storage_capacity(db):
+def require_storage_capacity(db, now, kind):
     # Called inside the existing serialized write transaction before every INSERT.
-    # A bounded primary-index scan counts retained rows, including expired rows.
-    # Never DELETE/UPDATE evidence or reserve an unbounded new counter table.
-    if db.execute('SELECT token_hash FROM sessions LIMIT ?,1',
-                  (MAX_RETAINED_SESSION_ROWS - 1,)).fetchone() is not None:
+    # Only sessions are reclaimed here; consents, audit and logs are never deleted (C02).
+    db.execute('DELETE FROM sessions WHERE expires_at<=? ORDER BY expires_at LIMIT ?',
+               (now, EXPIRED_SESSION_PURGE_BATCH))
+    limit = MAX_RETAINED_SESSION_ROWS
+    if not kind.startswith('admin'):
+        limit -= ADMIN_RESERVED_SESSION_ROWS
+    # A bounded expiry-index scan counts live rows only.
+    if db.execute('SELECT token_hash FROM sessions WHERE expires_at>? LIMIT ?,1',
+                  (now, limit - 1)).fetchone() is not None:
         raise GuardRejected('session_capacity_exhausted', status=503, retry_after=None)
