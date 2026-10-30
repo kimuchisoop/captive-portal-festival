@@ -1,0 +1,27 @@
+# INCOMPLETE TEMPLATE: pf(4) host firewall for the festival Wi-Fi server.
+# Not installed by any tool. Replace every CHANGE_ME, check with `pfctl -nf`,
+# and keep a rollback ready before loading (docs/ガイド.md 5章「ファイアウォール」).
+#
+# Assumes: the app listens on 127.0.0.1 only; nginx accepts 80/443 in front of it.
+
+ext_if = "CHANGE_ME_IF"                    # e.g. vtnet0 (see `ifconfig`)
+
+table <mgmt_nets>  const { CHANGE_ME_MGMT_NET }    # management networks (never 0.0.0.0/0)
+table <guest_nets> const { CHANGE_ME_GUEST_NET }   # visitor networks
+
+set skip on lo0
+set block-policy return
+scrub in all
+
+block in all
+pass out quick keep state                  # outbound, incl. DNS/NTP and remote MySQL
+
+# Diagnostics and IPv6 neighbour discovery
+pass in inet proto icmp icmp-type { echoreq, unreach }
+pass in inet6 proto icmp6
+
+# SSH only from management networks
+pass in on $ext_if proto tcp from <mgmt_nets> to ($ext_if) port 22 keep state
+
+# nginx: visitors and management (hostname-based split is done by nginx)
+pass in on $ext_if proto tcp from { <guest_nets>, <mgmt_nets> } to ($ext_if) port { 80, 443 } keep state
