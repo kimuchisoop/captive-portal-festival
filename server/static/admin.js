@@ -137,8 +137,12 @@
       $('consent-count').textContent = info.counts.consents;
       $('grant-count').textContent = info.counts.grants;
       $('pending-count').textContent = info.counts.unconfirmed;
+      // Only present when core-rt releases guests (adapter 'vyos'); manual release stays in the grants list below.
+      for (const [box, id, value] of [['network-authorized-box', 'network-authorized-count', info.counts.network_authorized], ['network-failed-box', 'network-failed-count', info.counts.network_failed]]) {
+        $(box).hidden = value === undefined; $(id).textContent = value ?? '—';
+      }
       const dl = $('service-info'); dl.replaceChildren();
-      for (const [label, value] of [['受付', info.service_state === 'local_only' ? 'ローカル保存のみ' : '停止・期間外'], ['定期処理の最終成功', dt(info.last_job_at_utc)],
+      for (const [label, value] of [['受付', info.service_state !== 'local_only' ? '停止・期間外' : info.adapter === 'vyos' ? '受付中（core-rtで通信を許可）' : 'ローカル保存のみ'], ['定期処理の最終成功', dt(info.last_job_at_utc)],
         ['暗号化バックアップ', dt(info.last_backup_at_utc)], ['同意保存期限の目安', info.retention_days ? info.retention_days + '日（自動削除停止）' : '未設定'],
         ['バックアップ期限の目安', info.backup_retention_days ? info.backup_retention_days + '日（自動削除停止）' : '未設定']]) {
         const a = document.createElement('dt'), b = document.createElement('dd'); a.textContent = label; b.textContent = value; dl.append(a, b);
@@ -175,7 +179,7 @@
           const authorization = {pending:'同意保存済み・許可待ち',accepted:'受付側で許可済み',rejected:'受付不可',expired:'期限切れ',revoked:'受付側で失効済み'};
           const observation = {unknown:'未確認',active:'接続情報あり',inactive:'未接続',stale:'更新待ち'};
           const revocation = {none:'要求なし',queued:'要求待ち',acknowledged:'装置応答あり',confirmed:'確認済み',failed:'確認できず'};
-          const div = item($('grants'), '許可の記録：' + g.grant_id, `${authorization[g.authorization_status]} ／ 接続の確認：${observation[g.observation_state]} ／ 切断：${revocation[g.revocation_state]} ／ 実機の許可確認なし`);
+          const div = item($('grants'), '許可の記録：' + g.grant_id, `${authorization[g.authorization_status]} ／ 接続の確認：${observation[g.observation_state]} ／ 切断：${revocation[g.revocation_state]} ／ ${g.network_verified ? 'core-rtで許可中' : '実機の許可確認なし'}`);
           if (!['revoked', 'expired'].includes(g.authorization_status)) {
             const key = crypto.randomUUID();
             button(div, '受付側で失効させる', () => api(`/v1/admin/grants/${g.grant_id}/revocations`, { reason: 'operator_request' }, key));

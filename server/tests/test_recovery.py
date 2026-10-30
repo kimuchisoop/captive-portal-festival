@@ -5,9 +5,9 @@ import io,json,struct,unittest
 from unittest.mock import patch
 from cryptography.fernet import Fernet,InvalidToken
 from stream_encryption import Writer,open_reader,MAGIC
-from stream_backup import backup_stream,inspect,compare_restored
-from backup_review import decrypt_check,restore_check
-from recovery_kit import create_kit,restore_kit,consume,safe_name
+from workflow_backup import backup_stream
+from backup_review import decrypt_check
+from recovery_kit import create_kit,consume,safe_name
 from preflight import inspect_home
 from mysql_fixture import new_database
 from manage import initialize
@@ -68,10 +68,6 @@ class RecoveryTests(unittest.TestCase):
     def test_stream_tamper_and_partial_are_not_successful(self):
         source=backup_stream(self.s);source.write_bytes(source.read_bytes()[:-1]);self.assertEqual(decrypt_check(self.s,source.name)['status'],'failed')
         self.login('records');self.assertNotEqual(self.get('/v1/admin/backups').json['items'][0]['verification'],'decrypt_checked')
-    def test_stream_restore_existing_database_refused(self):
-        source=backup_stream(self.s)
-        from stream_backup import restore_stream
-        with self.assertRaises(ValueError): restore_stream(source,self.home/'backup.key',Path(self.temp.name)/'refused',self.s.db_settings)
     def test_recovery_refuses_running_service_and_same_key_parent(self):
         archive=Path(self.temp.name)/'archives';archive.mkdir()
         with self.assertRaises(ValueError): create_kit(self.s,archive/'x',archive/'keys')

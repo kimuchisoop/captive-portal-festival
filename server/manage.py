@@ -10,53 +10,15 @@ if deps.is_dir():
 import argparse
 import getpass
 import json
-import os
 import re
-import shutil
 import time
 
-from cryptography.fernet import Fernet
 from werkzeug.security import generate_password_hash
 
-from app import ROOT, ROLES, Service, create_app, digest, uid, utc
-from jobs import backup, housekeeping, restore, run_jobs, secure_new_file
+from app import ROLES, Service, create_app, digest, uid, utc
+from jobs import run_jobs, secure_new_file
 from security import protect_directory
-from database import load_settings, initialize_schema, connect
-
-
-def _initialize_v4_history(home, sample=False, restored=False, db_settings=None):
-    home = Path(home).resolve()
-    if not restored:
-        home.mkdir(mode=0o700, parents=True, exist_ok=False)
-    if restored and (not (home / 'mysql.json').exists() or (home / 'config.json').exists() or (home/'restore.incomplete').exists()):
-        raise ValueError('Not an unprepared restored directory')
-    protect_directory(home)
-    if not restored and not db_settings:
-        raise ValueError('MySQL settings are required')
-    if not restored:
-        secure_new_file(home/'initialization.incomplete',b'initialization pending')
-    c = json.loads((ROOT / 'config.example.json').read_text(encoding='utf-8'))
-    if sample:
-        c.update(local_intake_enabled=True, event_id=uid(), service_window_id=uid(), terms_document_id=uid(),
-                 terms_version='local-draft-1', policy_version='local-test-1',
-                 service_start_utc=utc(int(time.time()) - 60), service_end_utc=utc(int(time.time()) + 86400),
-                 retention_days=7, audit_retention_days=7, backup_retention_days=7)
-    secure_new_file(home / 'config.json', (json.dumps(c, ensure_ascii=False, indent=2) + '\n').encode())
-    secure_new_file(home / 'session.key', os.urandom(32))
-    secure_new_file(home / 'backup.key', Fernet.generate_key())
-    secure_new_file(home / 'mfa.key', Fernet.generate_key())
-    for lang in ('ja', 'en'):
-        shutil.copyfile(ROOT / f'terms.{lang}.txt', home / f'terms.{lang}.txt')
-    if not restored:
-        secure_new_file(home/'mysql.json',json.dumps(db_settings).encode())
-        initialize_schema(db_settings,ROOT/'schema.sql')
-        (home/'initialization.incomplete').unlink()
-    s = Service(home)
-    if restored:
-        housekeeping(s)
-    return s
-
-
+from database import load_settings, connect
 from workflow_cli import initialize
 
 
@@ -119,7 +81,6 @@ def main():
     init.add_argument('--maintenance-db-config',type=Path,required=True)
     from workflow_cli import register as register_workflow_cli
     register_workflow_cli(sub)
-    sub.add_parser('prepare-restored')
     add = sub.add_parser('add-admin')
     add.add_argument('username')
     add.add_argument('--role', choices=sorted(ROLES), required=True)
@@ -132,16 +93,11 @@ def main():
     sub.add_parser('run-jobs')
     sub.add_parser('worker')
     sub.add_parser('backup')
-    sub.add_parser('backup-stream',help='Create a bounded-memory streaming MySQL backup')
     preflight=sub.add_parser('preflight',help='Collect configuration, key, permission, package and MySQL checks')
     preflight.add_argument('--offline',action='store_true')
     kit=sub.add_parser('create-recovery-kit',help='Stopped service only; encrypted DB/files with a separate NEW key directory')
     kit.add_argument('--output',type=Path,required=True)
     kit.add_argument('--key-directory',type=Path,required=True)
-    kit_restore=sub.add_parser('restore-recovery-kit',help='Restore to NEW home and EMPTY DB, preserve extracted evidence separately')
-    kit_restore.add_argument('--source',type=Path,required=True)
-    kit_restore.add_argument('--key-file',type=Path,required=True)
-    kit_restore.add_argument('--db-config',type=Path,required=True)
     sub.add_parser('mint-local-link')
     sub.add_parser('status')
     capacity=sub.add_parser('plan-capacity',help='Read current usage and write a provisional warning plan; no deletion')
@@ -156,39 +112,25 @@ def main():
     information_apply.add_argument('--plan',type=Path,required=True)
     sub.add_parser('ap-check',help='Inspect AP inventory without connecting to or modifying an AP')
     sub.add_parser('diagnose-mysql',help='Inspect MySQL connection and grants; never changes permissions')
-    sub.add_parser('upgrade-from-2',help='Explicit additive schema upgrade; stop the app and back up with the old release first')
-    sub.add_parser('upgrade-data',help='Explicit additive schema upgrade from 2 or 3 to 4; stop and back up first')
     https=sub.add_parser('prepare-https',help='Offline HTTPS plan; creates a closed configuration, never enables forwarding')
     https.add_argument('--plan',type=Path,required=True)
     https.add_argument('--output',type=Path,required=True)
     verify=sub.add_parser('verify-backup',help='Authenticate and inspect a backup; record the actual result')
     verify.add_argument('filename')
     verify.add_argument('--key-file',type=Path)
-    restore_verify=sub.add_parser('verify-restore',help='Restore a backup to a NEW folder and EMPTY separate DB; compare retained records')
-    restore_verify.add_argument('filename')
-    restore_verify.add_argument('--destination',type=Path,required=True)
-    restore_verify.add_argument('--db-config',type=Path,required=True)
-    restore_verify.add_argument('--key-file',type=Path)
     mfa_add=sub.add_parser('enroll-mfa',help='Interactive terminal-only authenticator enrollment')
     mfa_add.add_argument('username')
     mfa_reset=sub.add_parser('reset-mfa',help='Local terminal recovery; audited and invalidates sessions')
     mfa_reset.add_argument('username')
-    rest = sub.add_parser('restore-to-new')
-    rest.add_argument('--source', type=Path, required=True)
-    rest.add_argument('--key-file', type=Path, required=True)
-    rest.add_argument('--db-config',type=Path,required=True,help='Connection file for an EMPTY separate MySQL database')
     args = p.parse_args()
     from workflow_cli import handle as handle_workflow_cli
     if handle_workflow_cli(args): return
-    if args.command in ('apply-event-information','restore-to-new','restore-recovery-kit','prepare-restored','upgrade-from-2','upgrade-data','verify-restore'):
+    if args.command=='apply-event-information':
         raise ValueError('Use explicit schema-five commands, or the matching preserved legacy release')
     if args.command=='preflight':
         from preflight import inspect_home
         result=inspect_home(args.home,online=not args.offline)
         print(json.dumps(result,ensure_ascii=False,indent=2));raise SystemExit(2 if result['failed'] else 0)
-    if args.command=='restore-recovery-kit':
-        from recovery_kit import restore_kit
-        print(json.dumps(restore_kit(args.source,args.key_file,args.home,load_settings(args.db_config)),ensure_ascii=False,indent=2));return
     if args.command=='prepare-https':
         from deployment_plan import write_plan
         print(json.dumps(write_plan(args.plan,args.output),ensure_ascii=False,indent=2));return
@@ -209,25 +151,12 @@ def main():
         print('Initialized LOCAL service. Production is disabled. No administrator exists yet.')
         print('Next: apply the service-account grants (tools/mysql_grants.py runtime), then run preflight and add-admin.')
         return
-    if args.command == 'restore-to-new':
-        restore(args.source, args.key_file, args.home,load_settings(args.db_config))
-        print('Restored to NEW directory; prepare-restored is required. Intake remains disabled.')
-        return
-    if args.command == 'prepare-restored':
-        initialize(args.home, restored=True)
-        print('Prepared with NEW session/backup keys. Old sessions removed; grants are not reauthorized. Intake disabled.')
-        return
     if args.command == 'ap-check':
         from ap_profile import inspect_profile
         print(json.dumps(inspect_profile(args.home/'device-profile.json'),ensure_ascii=False,indent=2));return
     if args.command == 'diagnose-mysql':
         from operations import mysql_diagnostic
         print(json.dumps(mysql_diagnostic(load_settings(args.home/'mysql.json')),ensure_ascii=False,indent=2));return
-    if args.command in ('upgrade-from-2','upgrade-data'):
-        from migrations import upgrade_to_v4
-        upgraded=upgrade_to_v4(load_settings(args.home/'mysql.json'),args.home)
-        if not (args.home/'mfa.key').exists(): secure_new_file(args.home/'mfa.key',Fernet.generate_key())
-        print('Schema 4 ready; records retained. Restart with this release. Changed='+str(upgraded));return
     if args.command in ('serve','worker'):
         from preflight import require_startable
         require_startable(args.home)
@@ -278,11 +207,6 @@ def main():
         result=decrypt_check(s,args.filename,key_file=args.key_file)
         print(json.dumps(result,ensure_ascii=False))
         if result['status']!='passed': raise SystemExit(2)
-    elif args.command=='verify-restore':
-        from backup_review import restore_check
-        result=restore_check(s,args.filename,args.destination,load_settings(args.db_config),args.key_file)
-        print(json.dumps(result,ensure_ascii=False))
-        if result['status']!='passed': raise SystemExit(2)
     elif args.command == 'mint-local-link':
         print('LOCAL ONLY — one browser, expires in 300 seconds; no network permission:')
         print(mint_launch(s))
@@ -297,9 +221,7 @@ def main():
             serve(application, host='127.0.0.1', port=urlsplit(s.config['origin']).port,
                   threads=s.config.get('server_threads', 8), max_request_body_size=65536, clear_untrusted_proxy_headers=not s.transport['enabled'])
     elif args.command == 'backup':
-        print(str(backup(s)))
-    elif args.command=='backup-stream':
-        from stream_backup import backup_stream
+        from workflow_backup import backup_stream
         print(str(backup_stream(s)))
     elif args.command=='create-recovery-kit':
         from recovery_kit import create_kit

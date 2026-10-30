@@ -21,7 +21,8 @@ from cryptography.fernet import Fernet, InvalidToken
 from werkzeug.security import generate_password_hash
 
 from app import Service, create_app, uid, digest, timestamp
-from jobs import backup, housekeeping, monitor, notify, restore, run_jobs, expire_backups
+from jobs import housekeeping, monitor, notify, run_jobs, expire_backups
+from workflow_backup import backup_stream as backup
 from manage import initialize, add_admin, change_admin, mint_launch
 
 ORIGIN = 'http://127.0.0.1:8890'
