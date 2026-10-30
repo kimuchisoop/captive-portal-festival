@@ -62,8 +62,10 @@ def connect(c):
 # Connecting (TLS and authentication, in pure Python) costs about 35 queries, so finished
 # transactions hand their connection back for reuse. A returned connection is reset on the
 # server (session variables, user locks, temporary tables) and given the connect-time
-# settings again; any error, failed reset or age limit closes it instead.
+# settings again; any error, failed reset or age limit closes it instead. Idle connections are
+# also capped in total, so targets no longer used (other accounts, test databases) do not pile up.
 POOL_IDLE_LIMIT = 8
+POOL_TOTAL_IDLE_LIMIT = 16
 POOL_MAX_AGE_SECONDS = 300
 SESSION_SETTINGS = "SET NAMES utf8mb4 COLLATE utf8mb4_bin, autocommit=0"
 _pool = {}
@@ -99,11 +101,18 @@ def _checkin(key, raw, created):
         if not raw.cmd_reset_connection(): return _close(raw)
         cursor = raw.cursor(); cursor.execute(SESSION_SETTINGS); cursor.close()
     except Exception: return _close(raw)
+    evicted = []
     with _pool_lock:
-        idle = _pool.setdefault(key, [])
-        if len(idle) < POOL_IDLE_LIMIT:
-            idle.append((raw, created)); return
-    _close(raw)
+        idle = _pool.pop(key, [])
+        if len(idle) < POOL_IDLE_LIMIT: idle.append((raw, created))
+        else: evicted.append((raw, created))
+        _pool[key] = idle  # most recently returned target last
+        total = sum(len(entries) for entries in _pool.values())
+        for other in list(_pool):
+            while total > POOL_TOTAL_IDLE_LIMIT and _pool[other]:
+                evicted.append(_pool[other].pop(0)); total -= 1
+            if not _pool[other]: del _pool[other]
+    for old, _ in evicted: _close(old)
 
 def clear_pool():
     with _pool_lock:

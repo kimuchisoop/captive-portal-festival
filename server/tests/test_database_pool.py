@@ -61,4 +61,14 @@ class ConnectionReuseTests(unittest.TestCase):
         for t in opened:t.__exit__(None,None,None)
         self.assertEqual(len(database._pool[database._pool_key(self.c)]),database.POOL_IDLE_LIMIT)
 
+    def test_targets_no_longer_used_are_closed_first(self):
+        targets=[self.c]+[new_database() for _ in range(3)]
+        for target in targets:
+            opened=[transaction(target) for _ in range(database.POOL_IDLE_LIMIT)]
+            for t in opened:t.__enter__()
+            for t in opened:t.__exit__(None,None,None)
+        sizes=[len(database._pool.get(database._pool_key(t),[])) for t in targets]
+        self.assertEqual(sum(sizes),database.POOL_TOTAL_IDLE_LIMIT)
+        self.assertEqual(sizes[:2],[0,0]);self.assertEqual(sizes[-1],database.POOL_IDLE_LIMIT)
+
 if __name__=='__main__':unittest.main()
