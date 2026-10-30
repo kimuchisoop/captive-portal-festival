@@ -46,7 +46,7 @@ if ($Action -eq 'stop') {
     throw 'Stop is still pending. Check runtime logs; do not stop unrelated processes.'
 }
 if ($null -ne $owned) { 'Already running.'; return }
-if (-not (Test-Path -LiteralPath $pythonPath)) { throw 'Install the dependencies first; see README.md' }
+if (-not (Test-Path -LiteralPath $pythonPath)) { throw 'Install the dependencies first; see docs/ガイド.md' }
 & $pythonPath (Join-Path $PSScriptRoot 'manage.py') --home $dataPath status
 if ($LASTEXITCODE -ne 0) { throw 'Service validation failed' }
 if ($dataPath.Contains('"') -or $supervisorPath.Contains('"')) { throw 'Unsupported quote in path' }
