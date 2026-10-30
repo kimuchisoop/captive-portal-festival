@@ -140,3 +140,36 @@ def inspect_grants(grants,database,roles):
     if roles and roles!='NONE':reasons.append('active_roles_need_review')
     return dict(minimal=not reasons,reasons=sorted(set(reasons)),missing=missing,statement_count=len(grants),roles_resolved=not roles or roles=='NONE',
                 contract='schema5_service_table_columns',status='matched' if not reasons else 'unknown_or_mismatch')
+
+def maintenance_findings(grants,database,log_bin,trusted,roles):
+    """Problems that would stop schema creation part-way; an empty list means init may start."""
+    scope=json.loads((ROOT/'workflow-privileges.json').read_text(encoding='utf-8'))['maintenance_basic_scope']
+    needed={table:set(scope['privileges'])|({'UPDATE'} if table in scope.get('update_tables',()) else set()) for table in scope['tables']}
+    held={'*':set(),'db':set()};tables={}
+    for line in grants:
+        match=re.fullmatch(r'GRANT (.+?) ON (.+?) TO .+',line,re.I)
+        if not match:continue
+        try:parts={part.upper() for part in split_privileges(match[1]) if '(' not in part}
+        except ValueError:continue
+        if 'ALL PRIVILEGES' in parts or 'ALL' in parts:parts|={'SELECT','INSERT','UPDATE','CREATE','ALTER','INDEX','TRIGGER','REFERENCES','SUPER'}
+        target=match[2]
+        if target=='*.*':held['*']|=parts
+        elif re.fullmatch(r'`'+re.escape(database)+r'`\.\*',target):held['db']|=parts
+        else:
+            table=re.fullmatch(r'`'+re.escape(database)+r'`\.`([^`]+)`',target)
+            if table:tables.setdefault(table[1],set()).update(parts)
+    findings=[]
+    missing=sorted({p for table,want in needed.items() for p in want-(held['*']|held['db']|tables.get(table,set()))})
+    if missing:findings.append('maintenance account lacks '+', '.join(missing)+' on '+database+' (apply: python tools/mysql_grants.py maintenance ...)'+(' ; active roles are not expanded' if roles and roles!='NONE' else ''))
+    if log_bin and not trusted and 'SUPER' not in held['*']:
+        findings.append('binary logging is on: run SET PERSIST log_bin_trust_function_creators=ON on the MySQL server (or disable binlog) so the schema triggers can be created')
+    return findings
+
+def precheck_initialization(maintenance):
+    """Read-only checks before any folder or table is created."""
+    with transaction(maintenance) as db:
+        if db.execute('SHOW TABLES').fetchall():raise ValueError('The MySQL database '+maintenance['database']+' is not empty; init needs a NEW empty database')
+        grants=[r[0] for r in db.execute('SHOW GRANTS FOR CURRENT_USER').fetchall()]
+        row=db.execute('SELECT @@log_bin AS log_bin,@@log_bin_trust_function_creators AS trusted,CURRENT_ROLE() AS roles').fetchone()
+    findings=maintenance_findings(grants,maintenance['database'],int(row['log_bin']),int(row['trusted']),row['roles'])
+    if findings:raise ValueError('Initialization not started: '+' | '.join(findings))
