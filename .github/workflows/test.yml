@@ -33,6 +33,7 @@ jobs:
           node tests/operator_ui.test.cjs
           node tests/portal_state.test.cjs
           node tests/portal_network.test.cjs
+          node tests/portal_resume.test.cjs
           python -m unittest tests.test_network_access.Settings tests.test_vyos_gateway -v
 
   mysql:
