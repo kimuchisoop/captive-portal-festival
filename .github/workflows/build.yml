@@ -1,5 +1,5 @@
-# Builds festival-wifi for Windows x64 and Linux x86_64 and stores them as a DRAFT release.
-# Publishing the draft is a manual decision. No service data, keys or DB settings are used.
+# Builds festival-wifi for Windows x64, Linux x86_64 and FreeBSD 15.1 amd64 and stores them as a DRAFT release.
+# The draft is created only from main or a v* tag; other refs just build. Publishing is manual, after minisign signing (guide chapter 5). No service data, keys or DB settings are used.
 name: build
 
 on:
@@ -52,8 +52,33 @@ jobs:
           name: ${{ matrix.archive }}
           path: ${{ matrix.archive }}
 
+  build-freebsd:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and self-check in FreeBSD 15.1 (same steps as guide chapter 5)
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: '15.1'
+          usesh: true
+          prepare: |
+            pkg install -y python312 py312-cryptography
+          run: |
+            set -e
+            freebsd-version
+            pkg info py312-cryptography | head -1
+            python3.12 -m venv --system-site-packages /tmp/build-venv
+            /tmp/build-venv/bin/pip install Flask==3.1.3 Werkzeug==3.1.9 waitress==3.0.2 blinker==1.9.0 click==8.5.0 itsdangerous==2.2.0 Jinja2==3.1.6 MarkupSafe==3.0.4 mysql-connector-python==9.7.0 pyinstaller==6.22.3
+            /tmp/build-venv/bin/python tools/build_binary.py --output /tmp/festival-build
+            tar -czf festival-wifi-freebsd15-amd64.tar.gz -C /tmp/festival-build/dist festival-wifi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: festival-wifi-freebsd15-amd64.tar.gz
+          path: festival-wifi-freebsd15-amd64.tar.gz
+
   draft-release:
-    needs: build
+    needs: [build, build-freebsd]
+    if: github.ref_type == 'tag' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -70,4 +95,4 @@ jobs:
           cd out
           sha256sum * > SHA256SUMS.txt
           gh release create "$TAG" * --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft \
-            --title "$TAG" --notes "Local-only build. Not signed. Verify with SHA256SUMS.txt."
+            --title "$TAG" --notes "Local-only build. Unsigned draft: sign SHA256SUMS.txt with minisign and upload SHA256SUMS.txt.minisig before publishing (guide chapter 5)."
