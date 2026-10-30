@@ -1,6 +1,6 @@
 """Adds and removes visitor IPs in the core-rt (VyOS) PORTAL-AUTHED address group only (guide 16.4).
 
-Not wired into the app yet; the AP adapter stays disconnected. The API key is passed in by the caller,
+Used by network_access only when vyos_portal is enabled. The API key is passed in by the caller,
 which reads it from a protected file. Certificate verification is always on.
 """
 import ipaddress,json,socket,ssl
@@ -69,6 +69,20 @@ class VyosGateway:
         address=self.address(ip)
         self.call('/configure',{'op':'set','path':BASE+['address',address]})
         return address
+
+    def allow_many(self,ips):
+        """One commit for many visitors; VyOS commits one at a time, so per-visitor calls fall behind at opening."""
+        addresses=list(dict.fromkeys(self.address(ip) for ip in ips))
+        if addresses:self.call('/configure',[{'op':'set','path':BASE+['address',a]} for a in addresses])
+        return addresses
+
+    def revoke_many(self,ips):
+        """One commit; addresses already missing are skipped, since one failed delete would refuse the whole commit."""
+        addresses=list(dict.fromkeys(self.address(ip) for ip in ips))
+        present=set(self.authorized()) if addresses else set()
+        gone=[a for a in addresses if a in present]
+        if gone:self.call('/configure',[{'op':'delete','path':BASE+['address',a]} for a in gone])
+        return gone
 
     def revoke(self,ip):
         """Returns False when the address was not in the group. Existing connections may continue until conntrack expires."""

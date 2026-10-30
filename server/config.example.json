@@ -37,6 +37,14 @@
     "admin_origin": null,
     "trusted_proxy": null
   },
+  "vyos_portal": {
+    "enabled": false,
+    "api_origin": null,
+    "api_key_file": "vyos-api.key",
+    "ca_file": null,
+    "guest_networks": ["10.0.0.0/19", "10.0.32.0/19"],
+    "access_seconds": 7200
+  },
   "backup_format": "stream-v2",
   "event_information": {
     "name_ja": null,

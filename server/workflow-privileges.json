@@ -135,7 +135,9 @@
         "authorization_status",
         "revocation_state",
         "revoked_at",
-        "row_version"
+        "row_version",
+        "authorized_at",
+        "original_expires_at"
       ],
       "delete": false,
       "delete_reason": null,
@@ -143,7 +145,8 @@
         "app.py:502",
         "app.py:582",
         "jobs.py:38",
-        "jobs.py:47"
+        "jobs.py:47",
+        "network_access.py:run_batch"
       ]
     },
     {
@@ -153,14 +156,16 @@
       "update_columns": [
         "status",
         "attempts",
-        "last_error_code"
+        "last_error_code",
+        "next_attempt"
       ],
       "delete": false,
       "delete_reason": null,
       "basis": [
         "app.py:218",
         "jobs.py:40",
-        "jobs.py:45"
+        "jobs.py:45",
+        "network_access.py:run_batch"
       ]
     },
     {
