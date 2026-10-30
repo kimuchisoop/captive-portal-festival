@@ -17,6 +17,9 @@ if runtime_cert.is_file():shutil.copy2(runtime_cert,stage/runtime_cert.name)
 files={p.relative_to(stage).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in stage.rglob('*') if p.is_file()}
 (stage/'release-manifest.json').write_text(json.dumps(dict(release='0.11.10-rc1',files=files),ensure_ascii=False,indent=2),encoding='utf-8')
 command=[sys.executable,'-m','PyInstaller','--onedir','--name','festival-wifi','--distpath',str(out/'dist'),'--workpath',str(out/'build'),'--specpath',str(stage),'--add-data',str(stage)+os.pathsep+'.','--collect-submodules','mysql.connector.plugins','--collect-submodules','mysql.connector.locales']
+# Size: the app connects with use_pure=True, so the MySQL C extension (and the OpenSSL it bundles) is unused.
+for module in ('_mysql_connector','mysql.connector.connection_cext','mysql.connector.cursor_cext','tkinter','unittest','pydoc','doctest','idlelib','turtledemo','lib2to3','pdb'):command+=['--exclude-module',module]
+if os.name!='nt':command+=['--strip']
 for line in (source/'requirements.txt').read_text(encoding='utf-8').splitlines():command+=['--copy-metadata',line.split('==')[0]]
 for p in stage.glob('*.py'):
     if p.stem!='binary_entry':command+=['--hidden-import',p.stem]
