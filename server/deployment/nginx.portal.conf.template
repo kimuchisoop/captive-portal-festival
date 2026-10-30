@@ -10,7 +10,8 @@ map $uri $festival_route {
     ~^/v1/ visitor_api;
     ~^/static/ static;
 }
-log_format festival_safe '$time_iso8601 status=$status method=$request_method route=$festival_route request_id=$request_id';
+# correlation is the app's X-Correlation-ID (the reference shown to guests); "-" when nginx answered by itself.
+log_format festival_safe '$time_iso8601 status=$status method=$request_method route=$festival_route request_id=$request_id correlation=$upstream_http_x_correlation_id';
 # core-rt sends a guest's port-80 traffic here whatever the Host (OS login checks such as captive.apple.com),
 # so this is the default server: every plain-http request goes to the HTTPS consent page.
 server {
