@@ -9,7 +9,7 @@ import os
 import secrets
 import socket
 import subprocess
-from mysql_fixture import new_database, PreservedDirectory
+from mysql_fixture import new_database, PreservedDirectory, init_home
 import time
 import urllib.error
 import urllib.request
@@ -23,7 +23,7 @@ def main():
     checks = []
     with __import__('contextlib').nullcontext(PreservedDirectory().name) as temp:
         home = Path(temp) / 'http-data'
-        initialize(home, sample=True, db_settings=new_database())
+        init_home(home, sample=True)
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 0)); port = sock.getsockname()[1]
         origin = 'http://127.0.0.1:' + str(port)

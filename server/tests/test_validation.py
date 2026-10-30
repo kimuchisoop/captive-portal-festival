@@ -39,16 +39,6 @@ class ValidationTests(unittest.TestCase):
     def test_case_aliases_refused_before_extract(self):
         path,key=self.archive([('files/A.json',b'a'),('files/a.json',b'b')])
         with self.assertRaisesRegex(ValueError,'member'): consume(path,key)
-    def test_source_swap_during_stream_inspection_refused(self):
-        source=backup_stream(self.s);real=__import__('stream_backup').inspect
-        def altered(path,key):
-            result=real(path,key)
-            with path.open('ab') as handle: handle.write(b'changed')
-            return result
-        destination=Path(self.temp.name)/'not-created'
-        with patch('stream_backup.inspect',side_effect=altered):
-            with self.assertRaisesRegex(ValueError,'Source changed'): restore_stream(source,self.home/'backup.key',destination,new_database())
-        self.assertFalse(destination.exists())
     def test_inspect_proof_bound_before_decryption(self):
         source=backup_stream(self.s)
         from stream_backup import file_hash

@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
 import http.client,json,secrets,socket,subprocess,time
-from mysql_fixture import new_database,PreservedDirectory
+from mysql_fixture import new_database,PreservedDirectory,init_home
 from manage import initialize,add_admin
 from werkzeug.security import generate_password_hash
 
@@ -13,7 +13,7 @@ def check(name,condition):
     checks.append(name)
 temp=PreservedDirectory();home=Path(temp.name)/'https-http'
 with socket.socket() as sock: sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
-s=initialize(home,db_settings=new_database());password=secrets.token_urlsafe(24)
+s=init_home(home);password=secrets.token_urlsafe(24)
 add_admin(s,'httpsqa','settings',generate_password_hash(password))
 c=s.config;c['origin']='http://127.0.0.1:'+str(port);c['https_transport']=dict(enabled=True,portal_origin='https://wifi.example.org',admin_origin='https://admin.example.org',trusted_proxy='127.0.0.1')
 (home/'config.json').write_text(json.dumps(c),encoding='utf-8')

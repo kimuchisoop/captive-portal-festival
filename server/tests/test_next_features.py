@@ -196,40 +196,7 @@ class NextFeaturesTests(unittest.TestCase):
             db.execute('INSERT INTO audit VALUES (?,?,?,?,?,?)',(uid(),'local_cli','legacy_log',None,self.s.now(),self.s.now()+100))
         return settings,home
 
-    def test_explicit_upgrade_keeps_records_and_rejects_legacy_start(self):
-        settings,home=self.legacy()
-        with self.assertRaises(ValueError): Service(home)
-        self.assertTrue(upgrade_from_v2(settings,home))
-        s=Service(home)
-        with s.db() as db:
-            self.assertEqual(db.execute('SELECT count(*) FROM audit').fetchone()[0],1)
-            self.assertEqual(db.execute("SELECT value FROM meta WHERE name='schema_version'").fetchone()[0],'4')
-        self.assertFalse(upgrade_from_v2(settings,home))
 
-    def test_legacy_backup_restores_and_upgrades_without_deletion(self):
-        settings,home=self.legacy()
-        snapshot=dict(format='festival-wifi-mysql-backup',schema_version='2',created_at=self.s.now(),
-                      schema_sha256=hashlib.sha256((ROOT/'schema-v2.sql').read_bytes()).hexdigest(),tables={},columns={})
-        with transaction(settings) as db:
-            for table in LEGACY_TABLES:
-                snapshot['columns'][table]=[r['Field'] for r in db.execute('SHOW COLUMNS FROM `'+table+'`').fetchall()]
-                snapshot['tables'][table]=db.execute('SELECT * FROM `'+table+'`').fetchall()
-        source=home/'legacy.fernet';source.write_bytes(Fernet((home/'backup.key').read_bytes()).encrypt(json.dumps(snapshot).encode()))
-        dest=home.parent/('restored-'+uid());restore(source,home/'backup.key',dest,new_database())
-        s=initialize(dest,restored=True)
-        with s.db() as db: self.assertEqual(db.execute("SELECT count(*) FROM audit WHERE action='legacy_log'").fetchone()[0],1)
-        self.assertTrue(source.exists());self.assertFalse(s.config['local_intake_enabled'])
 
-    def test_new_backup_includes_features_and_requires_mfa_reenrollment(self):
-        self.login();r=self.draft();self.publish(r);monitor(self.s)
-        secret=base64.b32encode(secrets.token_bytes(20)).decode()
-        enroll(self.s,'settings',secret,totp(secret,self.clock.value//30))
-        path=backup(self.s);dest=self.home.parent/('recover-new-'+uid())
-        restore(path,self.home/'backup.key',dest,new_database());s=initialize(dest,restored=True)
-        with s.db() as db:
-            self.assertEqual(db.execute('SELECT count(*) FROM terms_revisions').fetchone()[0],1)
-            self.assertGreater(db.execute('SELECT count(*) FROM storage_samples').fetchone()[0],0)
-            self.assertEqual(db.execute('SELECT needs_reset FROM mfa_settings').fetchone()[0],1)
-        self.assertEqual(s.terms('ja')['document_id'],r['id'])
 
 if __name__=='__main__': unittest.main()

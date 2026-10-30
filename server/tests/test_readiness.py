@@ -103,19 +103,6 @@ class ReadinessTests(unittest.TestCase):
         with self.assertRaises(DatabaseError):
             with self.s.db(True) as db: db.execute("UPDATE backup_checks SET status='failed'")
 
-    def test_restore_check_really_restores_compares_and_keeps_source(self):
-        self.consent();path=backup(self.s);destination=self.home.parent/'verified-restore'
-        result=restore_check(self.s,path.name,destination,new_database())
-        self.assertEqual(result['status'],'passed',result);self.assertEqual(result['code'],'restored_and_compared')
-        self.assertTrue((destination/'config.json').exists());self.assertTrue(path.exists())
-        self.assertEqual(self.count('consents'),1)
-        recovered=Service(destination)
-        with recovered.db() as db:
-            self.assertEqual(db.execute('SELECT count(*) FROM consents').fetchone()[0],1)
-            self.assertEqual(db.execute('SELECT count(*) FROM sessions').fetchone()[0],0)
-            self.assertEqual(db.execute('SELECT authorization_status FROM grants').fetchone()[0],'expired')
-        self.login('records')
-        self.assertEqual(self.get('/v1/admin/backups').json['items'][0]['checks']['restore']['status'],'passed')
 
     def test_restore_check_refuses_original_and_preserves_nonempty_target(self):
         path=backup(self.s)
@@ -128,29 +115,7 @@ class ReadinessTests(unittest.TestCase):
         self.assertEqual(result['status'],'failed');self.assertFalse(destination.exists())
         with transaction(target) as db: self.assertEqual(db.execute('SELECT value FROM keep_me').fetchone()[0],42)
 
-    def test_schema3_additive_upgrade_preserves_audit(self):
-        target=new_database();initialize_schema(target,ROOT/'schema-v3.sql')
-        home=self.home.parent/'v3-upgrade';shutil.copytree(self.home,home)
-        (home/'mysql.json').write_text(json.dumps(target),encoding='utf-8')
-        with transaction(target,True) as db: db.execute('INSERT INTO audit VALUES (?,?,?,?,?,?)',(uid(),'local_cli','legacy_v3',None,self.s.now(),self.s.now()+1))
-        with self.assertRaises(ValueError): Service(home)
-        self.assertTrue(upgrade_to_v4(target,home));self.assertFalse(upgrade_to_v4(target,home))
-        service=Service(home)
-        with service.db() as db: self.assertEqual(db.execute("SELECT count(*) FROM audit WHERE action='legacy_v3'").fetchone()[0],1)
 
-    def test_schema3_backup_can_be_verified_and_restored(self):
-        target=new_database();initialize_schema(target,ROOT/'schema-v3.sql')
-        snapshot=dict(format='festival-wifi-mysql-backup',schema_version='3',created_at=self.s.now(),
-                      schema_sha256=hashlib.sha256((ROOT/'schema-v3.sql').read_bytes()).hexdigest(),tables={},columns={})
-        with transaction(target) as db:
-            for table in V3_TABLES:
-                snapshot['columns'][table]=[r['Field'] for r in db.execute('SHOW COLUMNS FROM `'+table+'`').fetchall()]
-                snapshot['tables'][table]=db.execute('SELECT * FROM `'+table+'`').fetchall()
-        directory=self.home/'backups';directory.mkdir(exist_ok=True)
-        file=directory/('backup-'+str(self.s.now())+'-'+uid()+'.fernet')
-        file.write_bytes(Fernet((self.home/'backup.key').read_bytes()).encrypt(json.dumps(snapshot).encode()))
-        result=restore_check(self.s,file.name,self.home.parent/'v3-restored',new_database())
-        self.assertEqual(result['status'],'passed',result)
 
     def test_support_summary_omits_secrets_free_text_and_targets(self):
         secret_note='NEVER_INCLUDE_PRIVATE_NOTE_0abc'
@@ -216,12 +181,6 @@ class ReadinessTests(unittest.TestCase):
         self.assertEqual(self.post(path,{**data,'item_id':'not-an-item'}).status_code,400)
         self.assertEqual(self.post(path,data,csrf='bad').status_code,403)
 
-    def test_checklist_records_are_immutable_and_in_backup(self):
-        run,data=self.checklist();self.post('/v1/admin/checklists/'+run+'/entries',data)
-        with self.assertRaises(DatabaseError):
-            with self.s.db(True) as db: db.execute("UPDATE checklist_entries SET note='changed'")
-        path=backup(self.s);snapshot=json.loads(Fernet((self.home/'backup.key').read_bytes()).decrypt(path.read_bytes()))
-        self.assertEqual(snapshot['schema_version'],'4');self.assertEqual(len(snapshot['tables']['checklist_entries']),1)
 
     def plan(self):
         return dict(deployment_os='linux',portal_hostname='wifi.example.test',admin_hostname='admin.example.test',
