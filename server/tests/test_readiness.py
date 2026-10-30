@@ -242,6 +242,10 @@ class ReadinessTests(unittest.TestCase):
         self.assertIn('TLSv1.2 TLSv1.3',config);self.assertNotIn('$request ',config);self.assertNotIn('$remote_addr',config)
         self.assertFalse(status['certificate_files_inspected'])
 
+    def test_https_plan_accepts_freebsd(self):
+        plan={**self.plan(),'deployment_os':'freebsd'};self.assertTrue(inspect_plan(plan)['plan_complete'])
+        self.assertIn('Dedicated freebsd nginx',render_closed_config(plan))
+
     def test_https_injection_and_unrestricted_admin_network_rejected(self):
         for change in [dict(portal_hostname='evil.test; include bad'),dict(admin_private_key='/etc/key;bad'),dict(management_networks=['0.0.0.0/0']),dict(management_networks=['::/0']),dict(deployment_os='windows')]:
             plan={**self.plan(),**change};self.assertFalse(inspect_plan(plan)['plan_complete'])

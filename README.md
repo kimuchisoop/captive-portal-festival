@@ -29,6 +29,13 @@ festival-wifi --home <新規保存先> init --db-config <runtime.json> --mainten
 festival-wifi --home <保存先> add-admin <利用者名> --role settings
 ```
 
-`runtime.json`はhost・port・user・password・databaseを持つJSONです。リモートDBでは検証可能な`ssl_ca`も必要です。実際の接続情報は配布物に含めません。権限定義は[server/workflow-privileges.json](server/workflow-privileges.json)です。初期状態は受付停止で、未承認8項目の値を本番用として承認したことにはなりません。
+`runtime.json`はhost・port・user・password・databaseを持つJSONです。リモートDBでは検証可能な`ssl_ca`も必要です。実際の接続情報は配布物に含めません。
+
+ひな形は[server/runtime.example.json](server/runtime.example.json)（サービス用）と[server/db-maintenance.example.json](server/db-maintenance.example.json)（保守用）です。配布フォルダーの外にある保護したフォルダーへコピーし、`CHANGE_ME`と利用者名・DB名を実際の値に書き換えてください。使える項目はhost・port（数値）・user・password・database・ssl_caだけです。127.0.0.1/localhost以外のDBでは`"ssl_ca": "<CA証明書のパス>"`を追加します。書き換えた実ファイルをリポジトリへ登録しないでください。
+
+## 取得・ビルド
+
+- オフライン導入：ネットにつながるWindows PCで`tools/fetch-wheelhouse.ps1`を実行すると、`requirements.lock`のハッシュと一致するwheel 12個が`server/wheelhouse`に揃います。serverフォルダーごと持ち込み、`server/install-dependencies.ps1`を実行します。wheelhouseはリポジトリに登録しません。
+- 実行ファイル：GitHubのActionsで`build`を手動実行するか`v*`タグを付けると、Windows/Linux版と`SHA256SUMS.txt`が下書きReleaseに保存されます。公開は内容確認後に手動で行います。非公開リポジトリではActionsの無料枠を消費します。権限定義は[server/workflow-privileges.json](server/workflow-privileges.json)です。初期状態は受付停止で、未承認8項目の値を本番用として承認したことにはなりません。
 
 [試験結果](docs/TEST-REPORT.md)・[修正内容](docs/CHANGES.md)・[残る作業](docs/NEXT-STEPS.md)を先に読んでください。server内の旧資料は履歴です。このREADMEと試験結果が今回の状態を示します。OS署名は付けていません。SHA256SUMS.txtで配布内容を照合できます。

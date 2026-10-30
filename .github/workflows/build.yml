@@ -1,0 +1,73 @@
+# Builds festival-wifi for Windows x64 and Linux x86_64 and stores them as a DRAFT release.
+# Publishing the draft is a manual decision. No service data, keys or DB settings are used.
+name: build
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            archive: festival-wifi-windows-x64.zip
+          - os: ubuntu-24.04
+            archive: festival-wifi-linux-x86_64.tar.gz
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies (hash-locked on Windows)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then
+            python -m pip install --require-hashes --only-binary=:all: -r server/requirements.lock
+          else
+            python -m pip install -r server/requirements.txt
+          fi
+          python -m pip install pyinstaller==6.22.3
+      - name: Build and self-check
+        shell: bash
+        run: python tools/build_binary.py --output "$RUNNER_TEMP/build"
+      - name: Package
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP/build/dist"
+          if [ "$RUNNER_OS" = Windows ]; then
+            7z a "$GITHUB_WORKSPACE/${{ matrix.archive }}" festival-wifi
+          else
+            tar -czf "$GITHUB_WORKSPACE/${{ matrix.archive }}" festival-wifi
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+
+  draft-release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Create draft release with SHA256SUMS
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('build-{0}', github.run_number) }}
+        run: |
+          cd out
+          sha256sum * > SHA256SUMS.txt
+          gh release create "$TAG" * --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --draft \
+            --title "$TAG" --notes "Local-only build. Not signed. Verify with SHA256SUMS.txt."

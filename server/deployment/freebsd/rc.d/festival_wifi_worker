@@ -1,0 +1,27 @@
+#!/bin/sh
+#
+# PROVIDE: festival_wifi_worker
+# REQUIRE: LOGIN NETWORKING
+# KEYWORD: shutdown
+#
+# festival_wifi_worker_enable="YES"
+# festival_wifi_worker_home="/var/db/festival-wifi"     # data folder (not the program folder)
+# festival_wifi_worker_bin="/usr/local/festival-wifi/festival-wifi"
+# festival_wifi_worker_user="festival"
+
+. /etc/rc.subr
+
+name=festival_wifi_worker
+rcvar=festival_wifi_worker_enable
+load_rc_config $name
+
+: ${festival_wifi_worker_enable:="NO"}
+: ${festival_wifi_worker_home:="/var/db/festival-wifi"}
+: ${festival_wifi_worker_bin:="/usr/local/festival-wifi/festival-wifi"}
+: ${festival_wifi_worker_user:="festival"}
+
+pidfile="/var/run/${name}.pid"
+command="/usr/sbin/daemon"
+command_args="-r -S -T ${name} -P ${pidfile} -u ${festival_wifi_worker_user} ${festival_wifi_worker_bin} --home ${festival_wifi_worker_home} worker"
+
+run_rc_command "$1"

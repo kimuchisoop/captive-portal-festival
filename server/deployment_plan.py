@@ -15,7 +15,7 @@ def inspect_plan(data):
         if value is None or value=='': missing.append(name);continue
         if not isinstance(value,str): errors.append(name);continue
         if name=='deployment_os':
-            if value!='linux': errors.append(name)
+            if value not in ('linux','freebsd'): errors.append(name)
         elif name.endswith('hostname'):
             if len(value)>253 or not re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}',value): errors.append(name)
         elif not re.fullmatch(r'/[A-Za-z0-9_./-]+',value) or '..' in value.split('/'): errors.append(name)
@@ -40,7 +40,7 @@ def render_closed_config(data):
     if not status['plan_complete']: raise ValueError('Complete the offline plan first')
     allows='\n'.join('    allow '+str(ipaddress.ip_network(value))+';' for value in data['management_networks'])
     return f'''# OFFLINE PREPARATION ONLY: no application traffic is forwarded.
-# Dedicated Linux nginx http-context snippet. Not installed by this tool.
+# Dedicated {data['deployment_os']} nginx http-context snippet. Not installed by this tool.
 # Certificate paths are operator-supplied references; no key material is copied.
 map $uri $festival_route {{
     default other;

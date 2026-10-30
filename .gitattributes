@@ -1,0 +1,2 @@
+server/deployment/freebsd/** text eol=lf
+*.sh text eol=lf

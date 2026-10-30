@@ -13,3 +13,4 @@ mysql.json
 maintenance*.json
 config.json
 *.partial
+wheelhouse/
