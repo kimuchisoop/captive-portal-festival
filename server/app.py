@@ -1,10 +1,8 @@
 """Local-only consent service. No NAS/RADIUS adapter is installed in this release."""
 from __future__ import annotations
 
-import csv
 import hashlib
 import hmac
-import io
 import ipaddress
 import json
 import secrets
@@ -22,7 +20,7 @@ from session_guard import SessionIssueGuard, GuardRejected, require_storage_capa
 
 PUBLIC_TERMS_SECONDS = 5
 
-from flask import Flask, g, jsonify, render_template, request, make_response
+from flask import Flask, g, jsonify, render_template, request
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -798,35 +796,8 @@ def create_app(home, clock=time.time):
     @app.get('/v1/admin/consents/export')
     @auth('admin', 'records')
     def export():
-        # A fixed maximum avoids an unbounded in-memory export. Pagination uses an immutable sequence.
-        try:
-            after = int(request.args.get('after', '0'))
-            if after < 0:
-                raise ValueError()
-        except ValueError:
-            raise ApiError('cursor_invalid')
-        with s.db() as db:
-            s.require_admin_transaction(db,g.session,'records')
-            rows = db.execute('SELECT * FROM consents WHERE seq>? AND delete_after>? ORDER BY seq LIMIT 1000', (after, s.now())).fetchall()
-        def safe(value):
-            val = str(value)
-            return "'" + val if val.lstrip().startswith(('=', '+', '-', '@', '\t', '\r')) else val
-        out = io.StringIO(newline='')
-        fields = ['id', 'event_id', 'terms_version', 'terms_sha256', 'policy_version', 'accepted_at_utc', 'language', 'delete_after']
-        writer = csv.writer(out)
-        writer.writerow(fields)
-        for row in rows:
-            writer.writerow([safe(row[k]) for k in fields])
-        with s.db(True) as db:
-            s.require_admin_transaction(db,g.session,'records')
-            from workflow_generation import require_runtime_ready
-            require_runtime_ready(s,db)
-            s.audit(db,g.session['owner_id'],'consents_export')
-        resp = make_response('\ufeff' + out.getvalue())
-        resp.headers['Content-Type'] = 'text/csv; charset=utf-8'
-        resp.headers['Content-Disposition'] = 'attachment; filename="consents.csv"'
-        resp.headers['X-Next-Cursor'] = str(rows[-1]['seq']) if len(rows) == 1000 else ''
-        return resp
+        # Retired: CSV leaves only through the fixed copy after a second person's approval.
+        raise ApiError('direct_export_retired', 403, '\u7c21\u6613CSV\u306f\u5ec3\u6b62\u3057\u307e\u3057\u305f\u3002\u6761\u4ef6\u3092\u6307\u5b9a\u3057\u305f\u56fa\u5b9aCSV\u3067\u4f9d\u983c\u3057\u3001\u5225\u306e\u62c5\u5f53\u8005\u306e\u627f\u8a8d\u3092\u53d7\u3051\u3066\u304b\u3089\u53d6\u5f97\u3057\u3066\u304f\u3060\u3055\u3044\u3002')
 
     @app.get('/v1/admin/settings')
     @auth('admin', 'settings')

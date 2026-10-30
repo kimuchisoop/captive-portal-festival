@@ -14,6 +14,6 @@
 - 両構成に共通する変更は基点ブランチに入れ、`mysql-local`へ取り込む。`mysql-remote`は保険なので、共通変更の取り込みは必要になったときに行い、`mysql-remote`側の変更を基点へ戻さない。構成固有の変更だけを各構成ブランチに入れる。
 - `main`へのPRは主構成の`freebsd/mysql-local`から出す。基点から直接`main`へ出すと、`main`にある同一マシン構成の手順やrc.dの`REQUIRE: mysql`が消える。
 - バイナリはFreeBSD上でビルドする（`docs/ガイド.md`）。Windows/Linux版はFreeBSDで動かない。
-- AP連携は未実装（adapter=disconnected）。本番値・承認状態の`false`を書き換えない。
+- ルーター連携はVyOS（core-rt）への実機接続（`server/network_access.py`、`vyos_gateway.py`）のみ。`config.json`の`vyos_portal.enabled=true`のときだけ`adapter=vyos`になり、既定は`adapter=disconnected`（成功を装わず失敗として扱う）。模擬の実装は`server/tests/`の中だけに置く。本番値・承認状態の`false`（`vyos_portal.enabled`、`ap_adapter_compatible`など）を書き換えない。
 - 実際の接続情報・パスワード・鍵・wheelhouseをコミットしない。
 - APIクレジット節約：必要なファイル・範囲だけ読み、大きいPDFや資料は必要なページだけ読む。

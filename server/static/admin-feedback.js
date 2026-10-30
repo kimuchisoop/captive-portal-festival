@@ -79,10 +79,7 @@
     if(response.status!==200||response.redirected||response.url!==new URL(path,location.origin).href||
        !/^text\/csv\s*;\s*charset\s*=\s*(?:"utf-8"|utf-8)\s*$/i.test(response.headers.get('Content-Type')||'')||!filename||next===null)throw invalid();
     let pageEnd=null;
-    if(expected.kind==='simple'){
-      if(!Number.isSafeInteger(expected.after)||expected.after<0||filename!=='consents.csv')throw invalid();
-      if(next!==''&&(!/^[1-9][0-9]*$/.test(next)||!Number.isSafeInteger(Number(next))||Number(next)<=expected.after))throw invalid();
-    }else if(expected.kind==='archive'){
+    if(expected.kind==='archive'){
       const {exportId,snapshotId,totalCount,afterOrdinal}=expected;
       if(typeof exportId!=='string'||!uuid.test(exportId)||typeof snapshotId!=='string'||!uuid.test(snapshotId)||
          response.headers.get('X-Snapshot-ID')!==snapshotId||!Number.isSafeInteger(totalCount)||totalCount<0||

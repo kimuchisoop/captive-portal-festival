@@ -31,6 +31,7 @@ ACTIONS = {
     'backup_decrypt_checked':'バックアップを復号検証','backup_restore_checked':'バックアップを復元検証',
     'support_bundle_created':'障害調査資料を作成','support_bundle_downloaded':'障害調査資料を取得',
     'checklist_created':'当日チェックを開始','checklist_updated':'当日チェックを記録',
+    'consent_archive_approved':'固定CSVの出力を別担当が承認',
     'consent_archive_failed':'固定CSVの準備失敗を記録',
     'consent_archive_page_generated':'固定CSVのページを生成',
     'consent_archive_queued':'固定CSVの準備を受付',

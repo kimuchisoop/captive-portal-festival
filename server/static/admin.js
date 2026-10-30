@@ -1,7 +1,7 @@
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
-  let csrf, role, timer, exportCursor = 0;
+  let csrf, role, timer;
   let auditCursor = null, backupCursor = null, auditFilters = {}, auditOptionsReady = false, backupsLoaded = false, sessionEpoch = 0;
   let auditGeneration=0,backupGeneration=0;
   let activeRefreshes=0;
@@ -34,10 +34,8 @@
     for (const id of ['notifications', 'grants', 'settings', 'users', 'service-info','storage-info','backup-list','audit-list','diagnostic-results','ap-info','ap-requirements']) $(id).replaceChildren();
     for (const id of ['audit-actor','audit-action']) $(id).replaceChildren(new Option('すべて',''));
     for (const id of ['audit-from','audit-until']) $(id).value='';
-    for (const id of ['audit-status','diagnostic-status','storage-warning','export-status']) $(id).textContent='';
+    for (const id of ['audit-status','diagnostic-status','storage-warning']) $(id).textContent='';
     auditCursor=null;backupCursor=null;auditFilters={};auditOptionsReady=false;backupsLoaded=false;
-    exportCursor = 0;
-    $('export').textContent='簡易CSVを取得';
     $('mfa-panel').hidden=true;$('mfa-code').value='';
     window.dispatchEvent(new CustomEvent('operator-session',{detail:null}));
   }
@@ -270,22 +268,6 @@
   });
   $('logout').addEventListener('click', async () => {
     try { await api('/v1/admin/logout', {}); signedOut(); message('ログアウトしました。'); } catch (e) { message(e.message); }
-  });
-  $('export').addEventListener('click', async () => {
-    $('export').disabled = true;
-    const epoch=sessionEpoch,after=exportCursor;
-    try {
-      const ensure=()=>{if(epoch!==sessionEpoch)throw Object.assign(new Error('セッションが更新されました。'),{stale:true});};
-      const file=await window.AdminFeedback.csv('/v1/admin/consents/export?after=' + after,ensure,{kind:'simple',after});
-      const next=file.nextCursor,blob=file.blob;
-      if(epoch!==sessionEpoch||!['records','settings'].includes(role))return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `consents-after-${after}.csv`; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      exportCursor = next ? Number(next) : 0;
-      $('export').textContent = next ? '簡易CSVの次の最大1,000件を取得' : '簡易CSVを取得';
-      $('export-status').textContent = ' CSVページを生成しました。保存完了は端末側で確認してください。'+(next?' 続きがあります。':'');
-    } catch (e) { if(epoch===sessionEpoch)message(e.message); } finally { $('export').disabled = false; }
   });
   async function init() {
     try {

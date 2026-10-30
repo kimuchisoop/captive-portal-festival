@@ -114,6 +114,34 @@
       "retryable": false
     },
     {
+      "code": "export_approval_required",
+      "status": 409,
+      "message": "別の担当者の承認がまだありません。依頼番号を承認者に伝えてください。",
+      "next_action": "別担当がapprovalをGETで確認してPOST",
+      "retryable": false
+    },
+    {
+      "code": "export_self_approval",
+      "status": 403,
+      "message": "自分の出力依頼は承認できません。別の担当者に依頼してください。",
+      "next_action": "別担当が承認",
+      "retryable": false
+    },
+    {
+      "code": "export_approval_mismatch",
+      "status": 409,
+      "message": "確認した出力対象と現在の対象が一致しません。依頼内容を確認し直してください。",
+      "next_action": "approvalをGETし直す",
+      "retryable": false
+    },
+    {
+      "code": "export_already_approved",
+      "status": 409,
+      "message": "この出力依頼は承認済みです。",
+      "next_action": "承認内容をGETで確認",
+      "retryable": false
+    },
+    {
       "code": "export_not_ready",
       "status": 409,
       "message": "この出力はまだ取得できません。準備状況を確認してください。",

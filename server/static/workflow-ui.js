@@ -3,13 +3,13 @@
   const $=id=>document.getElementById(id), planRoot='/v1/admin/event-information/plans', exportRoot='/v1/admin/consent-archive-exports';
   let epoch=0,user=null,activeIdentity='',selectedPlan=null,preview=null,planCursor=null,jobCursor=null,alertCursor=null;
   const keys=new Map();
-  const generations={plans:0,planDetail:0,jobs:0,jobDetail:0,alerts:0,preview:0};
+  const generations={plans:0,planDetail:0,jobs:0,jobDetail:0,alerts:0,preview:0,approval:0};
   function latest(kind,more=false){
     const identity=epoch,version=more?generations[kind]:++generations[kind];
     return ()=>{if(identity!==epoch||version!==generations[kind])throw Object.assign(new Error('表示が更新されました。'),{stale:true});};
   }
   function viewGuard(parent){
-    const root=parent.closest('#workflow-plan-detail,#workflow-export-detail,#workflow-preview');
+    const root=parent.closest('#workflow-plan-detail,#workflow-export-detail,#workflow-preview,#workflow-approval-detail');
     const token=root?.dataset.workflowRevision,identity=epoch;
     return ()=>{if(identity!==epoch||!parent.isConnected||(root&&root.dataset.workflowRevision!==token))throw Object.assign(new Error('表示が更新されました。'),{stale:true});};
   }
@@ -132,7 +132,11 @@
     navigate('records');
     card(root,labels[job.effective_state],`依頼番号 ${job.export_id} ／ 検索基準 ${date(job.as_of_utc)}。元の記録は削除しません。`);
     if(job.error_code)card(root,'準備できなかった理由',preparationErrors[job.error_code]||'サーバー担当へ状態の確認を依頼してください。');
-    if(job.snapshot){card(root,'固定した出力対象',`${job.snapshot.total_count}件 ／ 準備完了 ${date(job.snapshot.prepared_at_utc)}。準備完了は端末への保存完了を意味しません。`);button(root,'先頭のCSVページを取得',()=>download(job,job.snapshot.first_page_cursor,root));}
+    if(job.snapshot){
+      card(root,'固定した出力対象',`${job.snapshot.total_count}件 ／ 準備完了 ${date(job.snapshot.prepared_at_utc)} ／ 確認値 ${job.snapshot.rows_sha256}。準備完了は端末への保存完了を意味しません。`);
+      if(job.approval){card(root,'承認済み',`${date(job.approval.approved_at_utc)} に別の担当者が承認しました。`);button(root,'先頭のCSVページを取得',()=>download(job,job.snapshot.first_page_cursor,root));}
+      else card(root,'別の担当者の承認待ち','CSVは承認後に取得できます。依頼番号と目的を承認者に伝えてください。承認者は「他の担当者の出力依頼を承認」で条件と件数を確認します。');
+    }
     if(job.state==='failed')button(root,'同じ条件で新しく準備を依頼',async()=>{ensure();const next=await api(exportRoot,{filters:job.filters,retry_of:job.export_id});ensure();await loadJobs();ensure();await showJob(next.export_id);});
     button(root,'準備と取得の履歴',()=>showEvents(exportRoot+'/'+id+'/events',root,'export'));
     button(root,'現在の状態を更新',()=>showJob(id));
@@ -189,13 +193,30 @@
     for(const item of value.items)card($('workflow-preview'),date(item.accepted_at_utc),`${item.language} ／ ${item.deadline_scope==='processing_deadline_elapsed'?'処理期限超過・保持中':'処理期限内'}`);
     if(value.next_cursor)button($('workflow-preview'),'プレビューの続きを表示',()=>previewMore(filters,value.next_cursor,ensure));
   }
+  const scopes={all:'すべて',within_processing_deadline:'処理期限内',processing_deadline_elapsed:'処理期限超過・保持中'};
+  async function showApproval(id){
+    const ensure=latest('approval'),root=$('workflow-approval-detail');
+    const review=await api(exportRoot+'/'+encodeURIComponent(id)+'/approval');ensure();
+    root.replaceChildren();root.dataset.workflowRevision=String(generations.approval);
+    const f=review.filters;
+    card(root,`依頼者 ${review.owner_username||review.owner_id}`,`依頼番号 ${review.export_id} ／ 学校祭 ${f.event_id} ／ 同意日時 ${date(f.accepted_start_utc)}〜${date(f.accepted_end_utc)} ／ 言語 ${f.language||'すべて'} ／ ${scopes[f.deadline_scope]||f.deadline_scope}`);
+    if(!review.ready){card(root,'まだ承認できません','準備が完了していません。依頼者に準備状況を確認してください。');return;}
+    card(root,'固定した出力対象',`${review.total_count}件 ／ 確認値 ${review.rows_sha256}`);
+    if(review.approval){card(root,'承認済み',`${date(review.approval.approved_at_utc)} に承認されています。`);return;}
+    if(user&&review.owner_id===user.id){card(root,'自分の依頼です','自分の出力依頼は承認できません。別の担当者に依頼してください。');return;}
+    button(root,'依頼者・目的・範囲を確認したので承認',async()=>{const value=await api(exportRoot+'/'+encodeURIComponent(review.export_id)+'/approval',{rows_sha256:review.rows_sha256});ensure();status('承認しました。依頼者がCSVを取得できます。');await showApproval(value.export_id);});
+  }
+  $('workflow-approval').addEventListener('submit',async event=>{
+    event.preventDefault();const submitter=window.AdminFeedback.submitButton(event);if(submitter)submitter.disabled=true;
+    try{await showApproval($('workflow-approval-id').value.trim());}catch(error){if(!error.stale)status(error.message);}finally{if(submitter)submitter.disabled=false;}
+  });
   function buttonCreate(parent,filters){button(parent,'この条件でCSVの準備を依頼',async()=>{const result=await api(exportRoot,{filters,retry_of:null});await loadJobs();await showJob(result.export_id);status('準備を受け付けました。完了後にCSVを取得できます。');});}
   window.addEventListener('operator-session',event=>{
     const next=event.detail||null,identity=next?next.id+':'+next.role:'';
     if(identity===activeIdentity)return;
     activeIdentity=identity;user=next;epoch++;keys.clear();selectedPlan=null;preview=null;planCursor=jobCursor=alertCursor=null;
-    for(const id of ['workflow-plans','workflow-plan-detail','workflow-exports','workflow-export-detail','workflow-alerts','workflow-preview','workflow-plans-more','workflow-exports-more','workflow-alerts-more'])$(id).replaceChildren();
-    $('workflow-import').reset();$('workflow-search').reset();status('');
+    for(const id of ['workflow-plans','workflow-plan-detail','workflow-exports','workflow-export-detail','workflow-alerts','workflow-preview','workflow-plans-more','workflow-exports-more','workflow-alerts-more','workflow-approval-detail'])$(id).replaceChildren();
+    $('workflow-import').reset();$('workflow-search').reset();$('workflow-approval').reset();status('');
     $('workflow-plans-panel').hidden=!next||next.role!=='settings';
     $('workflow-import-panel').hidden=!next||next.role!=='settings';
     $('workflow-archive-panel').hidden=!next||!['records','settings'].includes(next.role);
