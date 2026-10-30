@@ -1,0 +1,87 @@
+[
+  {
+    "test": "test_restore_check_really_restores_compares_and_keeps_source (test_readiness.ReadinessTests.test_restore_check_really_restores_compares_and_keeps_source)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  },
+  {
+    "test": "test_source_swap_during_stream_inspection_refused (test_validation.ValidationTests.test_source_swap_during_stream_inspection_refused)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  },
+  {
+    "test": "test_aggregate_survives_application_restart_and_real_backup_restore (test_experience.ExperienceTests.test_aggregate_survives_application_restart_and_real_backup_restore)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  },
+  {
+    "test": "test_explicit_upgrade_keeps_records_and_rejects_legacy_start (test_next_features.NextFeaturesTests.test_explicit_upgrade_keeps_records_and_rejects_legacy_start)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧試験がサービス用アカウントで保守操作・ユーザー作成を実行。形式5の保守アカウント分離に未対応。"
+  },
+  {
+    "test": "test_legacy_backup_restores_and_upgrades_without_deletion (test_next_features.NextFeaturesTests.test_legacy_backup_restores_and_upgrades_without_deletion)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧試験がサービス用アカウントで保守操作・ユーザー作成を実行。形式5の保守アカウント分離に未対応。"
+  },
+  {
+    "test": "test_new_backup_includes_features_and_requires_mfa_reenrollment (test_next_features.NextFeaturesTests.test_new_backup_includes_features_and_requires_mfa_reenrollment)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  },
+  {
+    "test": "test_minimal_mysql_account_is_recognized_using_real_grants (test_operations.OperationalTests.test_minimal_mysql_account_is_recognized_using_real_grants)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧試験がサービス用アカウントで保守操作・ユーザー作成を実行。形式5の保守アカウント分離に未対応。"
+  },
+  {
+    "test": "test_checklist_records_are_immutable_and_in_backup (test_readiness.ReadinessTests.test_checklist_records_are_immutable_and_in_backup)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  },
+  {
+    "test": "test_schema3_additive_upgrade_preserves_audit (test_readiness.ReadinessTests.test_schema3_additive_upgrade_preserves_audit)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧試験がサービス用アカウントで保守操作・ユーザー作成を実行。形式5の保守アカウント分離に未対応。"
+  },
+  {
+    "test": "test_schema3_backup_can_be_verified_and_restored (test_readiness.ReadinessTests.test_schema3_backup_can_be_verified_and_restored)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧試験がサービス用アカウントで保守操作・ユーザー作成を実行。形式5の保守アカウント分離に未対応。"
+  },
+  {
+    "test": "test_legacy_size_warning_keeps_file (test_recovery.RecoveryTests.test_legacy_size_warning_keeps_file)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  },
+  {
+    "test": "test_recovery_kit_includes_logs_keys_config_and_restores_to_closed_home (test_recovery.RecoveryTests.test_recovery_kit_includes_logs_keys_config_and_restores_to_closed_home)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  },
+  {
+    "test": "test_stream_backup_verify_and_real_restore_comparison (test_recovery.RecoveryTests.test_stream_backup_verify_and_real_restore_comparison)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  },
+  {
+    "test": "test_backup_tampering_rejected (test_service.Tests.test_backup_tampering_rejected)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  },
+  {
+    "test": "test_encrypted_backup_integrity_and_wrong_key (test_service.Tests.test_encrypted_backup_integrity_and_wrong_key)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  },
+  {
+    "test": "test_old_backup_restore_keeps_logs_without_reauthorizing (test_service.Tests.test_old_backup_restore_keeps_logs_without_reauthorizing)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  },
+  {
+    "test": "test_restore_new_directory_stopped_sessions_and_grants (test_service.Tests.test_restore_new_directory_stopped_sessions_and_grants)",
+    "classification": "legacy_fixture_or_legacy_api",
+    "reason": "旧形式（Fernet／stream-v1／schema2～4）のAPI・期待値を参照。形式5の現行経路の合格とは扱わない。"
+  }
+]

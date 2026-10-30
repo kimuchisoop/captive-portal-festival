@@ -1,0 +1,4255 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "学校祭ゲストWi-Fi 管理機能追加仕様案",
+    "version": "0.11.10-rc1",
+    "description": "20操作のソース実装候補。DB形式5・31表。試験/SQL適用/公開未実施。workflow_policy.approved=falseでは期限・出力に関わる操作を503で拒否。"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "同一オリジン。稼働先指定ではない。"
+    }
+  ],
+  "tags": [
+    {
+      "name": "既存APIを拡張",
+      "description": "既存の要求/成功応答を維持してDB連携を追加する案。"
+    },
+    {
+      "name": "追加API案",
+      "description": "未実装。"
+    },
+    {
+      "name": "docs5補足",
+      "description": "旧案取り込み、権限付き通知、既存通知確認の追加条件。"
+    }
+  ],
+  "security": [
+    {
+      "AdminSession": []
+    }
+  ],
+  "paths": {
+    "/v1/admin/event-information": {
+      "get": {
+        "operationId": "getCurrentEventInformation",
+        "summary": "現在の案内情報を取得",
+        "tags": [
+          "既存APIを拡張"
+        ],
+        "description": "現行API。valuesは起動時config、config_sha256は現在のディスク。反映状況は追加案application-statusで別確認する。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "現在の案内情報を取得",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentInformation"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/v1/admin/event-information/plans": {
+      "post": {
+        "operationId": "saveEventInformationPlan",
+        "summary": "変更案を保存",
+        "tags": [
+          "既存APIを拡張"
+        ],
+        "description": "現行の要求2キー・成功応答を維持しDBの案/初期イベント/監査を追加。初回の入力やconfig不一致は現行同様event_information_invalid/409。現行は業務検証が冪等照会より先だが、追加案では認証/CSRF/JSON形確認の後に冪等照会、未処理キーだけ業務検証を行う。成功後のconfig変更で再送結果が失われないよう呼出順も改修する。ファイルだけ残った失敗成果物は削除しない。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "settings"
+        ],
+        "responses": {
+          "201": {
+            "description": "変更案を保存",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMedia"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          },
+          {
+            "$ref": "#/components/parameters/Idempotency"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavePlanRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listEventInformationPlans",
+        "summary": "変更案一覧",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "created_at DESC,id DESCのkeyset。カーソルは同じ条件・件数に束縛。対象固定CSVの代用ではない。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "変更案一覧",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ]
+      }
+    },
+    "/v1/admin/event-information/plans/{plan_id}": {
+      "get": {
+        "operationId": "getEventInformationPlan",
+        "summary": "変更案の内容と現在状態",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "base_valuesは保存時の基準、valuesは変更案。一覧ではsource_file_status=not_checked可、詳細は案ファイルの存在/内容ハッシュを確認して結果を返す。読込できなくてもDB値を空欄に置換せず、未確認と表示し確認・適用を拒否する。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "変更案の内容と現在状態",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PlanId"
+          }
+        ]
+      }
+    },
+    "/v1/admin/event-information/plans/{plan_id}/events": {
+      "get": {
+        "operationId": "listEventInformationPlanEvents",
+        "summary": "変更案の追記履歴",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "plan_version ASC。状態変更は行わない。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "変更案の追記履歴",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanEvents"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PlanId"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ]
+      }
+    },
+    "/v1/admin/event-information/plans/{plan_id}/review-requests": {
+      "post": {
+        "operationId": "requestEventInformationReview",
+        "summary": "別担当への確認依頼を記録",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "savedまたはreviewedからreview_pendingへ。期限切れのreviewedからも可能だが元configが同じこと。失効した確認を再利用しない。通知の外部送信は含まない。 docs7: target_matches=falseは409 plan_target_mismatch。旧target_hashを更新せず現在homeの新案へ作り直す。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "別担当への確認依頼を記録",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMedia"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PlanId"
+          },
+          {
+            "$ref": "#/components/parameters/CSRF"
+          },
+          {
+            "$ref": "#/components/parameters/Idempotency"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/event-information/plans/{plan_id}/reviews": {
+      "post": {
+        "operationId": "recordEventInformationReview",
+        "summary": "内容の確認を記録",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "review_pendingのみ。推奨案は作成者と別のsettings担当1名。expected_version/内容ハッシュ/元config一致。確認の24時間有効はサーバーが計算し任意値を受けない。 docs7: target_matches=falseは409 plan_target_mismatch。旧target_hashを更新せず現在homeの新案へ作り直す。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "内容の確認を記録",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMedia"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PlanId"
+          },
+          {
+            "$ref": "#/components/parameters/CSRF"
+          },
+          {
+            "$ref": "#/components/parameters/Idempotency"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRecordRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/event-information/plans/{plan_id}/withdrawals": {
+      "post": {
+        "operationId": "withdrawEventInformationPlan",
+        "summary": "変更案を取下げ",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "saved/review_pending/reviewedのみ。apply_attemptが1件でも存在すれば拒否。元案と履歴は削除しない。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "変更案を取下げ",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMedia"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PlanId"
+          },
+          {
+            "$ref": "#/components/parameters/CSRF"
+          },
+          {
+            "$ref": "#/components/parameters/Idempotency"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithdrawalRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/event-information/plans/{plan_id}/application-status": {
+      "get": {
+        "operationId": "getEventInformationApplicationStatus",
+        "summary": "ファイルとapp/workerへの反映状態",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "最新attemptと観測を取得。現在のconfig、appメモリー、worker heartbeatを照合。GETは適用・照合結果の追記・再起動を行わない。既知の後続案が現在設定ならsupersededとsuperseding_plan_idを返し、過去の成功は保持。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "ファイルとapp/workerへの反映状態",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PlanId"
+          }
+        ]
+      }
+    },
+    "/v1/admin/event-information/plans/{plan_id}/apply-attempts": {
+      "get": {
+        "operationId": "listEventInformationApplyAttempts",
+        "summary": "変更案の過去を含む適用試行",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "created_at ASC,id ASC。各試行の最新観測を併記。GETはCLIの代わりに適用しない。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "変更案の過去を含む適用試行",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyAttemptList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PlanId"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ]
+      }
+    },
+    "/v1/admin/event-information/plans/{plan_id}/apply-attempts/{attempt_id}/observations": {
+      "get": {
+        "operationId": "listEventInformationApplyObservations",
+        "summary": "試行内の全観測履歴",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "observation_version ASC。planとattemptの所属が違えば404。成功履歴と後日の競合観測を別に表示する。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "試行内の全観測履歴",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyObservationList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PlanId"
+          },
+          {
+            "$ref": "#/components/parameters/AttemptId"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ]
+      }
+    },
+    "/v1/admin/consent-archives": {
+      "get": {
+        "operationId": "searchConsentArchives",
+        "summary": "期限超過を含む同意記録を検索",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "検索条件はcursor付き要求でも同じ値を指定。source_seq ASC。as_ofは初回要求で固定してカーソルに束縛。表示対象はDBの厳密な固定スナップショットではない。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "records",
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "期限超過を含む同意記録を検索",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveSearch"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "minLength": 1
+            }
+          },
+          {
+            "name": "accepted_start_utc",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 20,
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+            }
+          },
+          {
+            "name": "accepted_end_utc",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 20,
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+            }
+          },
+          {
+            "name": "deadline_scope",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "within_processing_deadline",
+                "processing_deadline_elapsed"
+              ]
+            }
+          },
+          {
+            "name": "language",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "minLength": 1
+            },
+            "description": "省略は全言語。空文字不可。"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ]
+      }
+    },
+    "/v1/admin/consent-archive-exports": {
+      "post": {
+        "operationId": "createConsentArchiveExport",
+        "summary": "対象固定CSVの準備を依頼",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "本人の未完了1件まで。既にqueued/preparingがあれば409 export_already_running。別人の依頼は待ち行列、全体1worker。retry_ofは本人のfailed依頼・条件同一のみ。成功応答のqueuedは受付時点の値なのでGETで進捗照会する。 docs7: retry_ofは本人・同条件のfailed末端で子なし。既存書込ロック下で判定し、分岐は409 retry_source_invalid。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "records",
+          "settings"
+        ],
+        "responses": {
+          "202": {
+            "description": "対象固定CSVの準備を依頼",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              },
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                },
+                "description": "本人用の状態取得パス。"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMedia"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          },
+          {
+            "$ref": "#/components/parameters/Idempotency"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExportRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listOwnConsentArchiveExports",
+        "summary": "本人の出力依頼一覧",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "owner_idをクエリで指定できない。created_at DESC,id DESC。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "records",
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "本人の出力依頼一覧",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ]
+      }
+    },
+    "/v1/admin/consent-archive-exports/{export_id}": {
+      "get": {
+        "operationId": "getOwnConsentArchiveExport",
+        "summary": "本人の出力状態と先頭カーソル",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "readyの場合、同じ確定対象に対する先頭カーソルを15分有効で再発行。snapshotの内容は変更しない。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "records",
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "本人の出力状態と先頭カーソル",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExportId"
+          }
+        ]
+      }
+    },
+    "/v1/admin/consent-archive-exports/{export_id}/events": {
+      "get": {
+        "operationId": "listOwnConsentArchiveExportEvents",
+        "summary": "本人の出力履歴",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "created_at ASC,id ASC。取得成功の意味はサーバー側ページ生成であり端末保存の証明ではない。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "records",
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "本人の出力履歴",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportEvents"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExportId"
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ]
+      }
+    },
+    "/v1/admin/consent-archive-exports/{export_id}/content": {
+      "get": {
+        "operationId": "downloadConsentArchivePage",
+        "summary": "固定対象のCSVページを取得",
+        "tags": [
+          "追加API案"
+        ],
+        "description": "ready・本人・現在のrecords/settings権限が必要。署名カーソルはsnapshot/owner/ordinal/固定1000件に束縛。0件もヘッダーだけの1ページ。次カーソル空欄が末尾。ダウンロード要求とページ生成を監査。 docs8: ソース候補へ反映済み。試験未実施。",
+        "x-implementation-status": "source_authored_not_executed",
+        "x-required-roles": [
+          "records",
+          "settings"
+        ],
+        "responses": {
+          "200": {
+            "description": "UTF-8 BOM + CSV、最大1,000行。CSV列は既存8列と同一。0件のページ開始/終了は0。",
+            "headers": {
+              "X-Correlation-ID": {
+                "description": "要求と監査を照合するID。現行実装と同じ。",
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              },
+              "Cache-Control": {
+                "description": "管理画面/記録は保存キャッシュ不可。",
+                "schema": {
+                  "const": "no-store"
+                }
+              },
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                },
+                "description": "attachment; filename=\"consent-archive-<UUID>-<start>-<end>.csv\"。利用者入力を含めない。"
+              },
+              "X-Next-Cursor": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 2048
+                },
+                "description": "次ページ、末尾は空文字。有効15分。"
+              },
+              "X-Export-ID": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 36,
+                  "format": "uuid",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                }
+              },
+              "X-Snapshot-ID": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 36,
+                  "format": "uuid",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                }
+              },
+              "X-Total-Count": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100000
+                }
+              },
+              "X-Page-Start": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100000
+                }
+              },
+              "X-Page-End": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100000
+                }
+              },
+              "X-Page-SHA256": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "description": "BOM/ヘッダー/行を含む当ページ実バイトのSHA-256。"
+              },
+              "X-Rows-SHA256": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "description": "確定全対象の行ハッシュ列のSHA-256。CSV全ファイルのハッシュではない。"
+              }
+            },
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "description": "UTF-8 BOM、CRLF、ヘッダーあり。数式対策済み。"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ExportId"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 2048,
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    },
+    "/v1/admin/event-information/plan-imports": {
+      "post": {
+        "operationId": "commitLegacyEventPlanImport",
+        "summary": "旧案を新しい保存済み案として取り込む",
+        "tags": [
+          "docs5補足"
+        ],
+        "description": "OS担当が先に準備した保護レポートをID/実バイトSHAで指定。作成者は現在のログイン本人。元ファイルは保全し、新IDの案/created/audit/idempotencyを同一TXで登録。savedのみ。旧承認・適用は引き継がない。source SHA単位の重複を対象/DB書込ロック下で拒否。適用APIではない。 docs8: ソース候補へ反映済み。試験未実施。",
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CSRF"
+          },
+          {
+            "$ref": "#/components/parameters/Idempotency"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "旧案を新しい保存済み案として取り込む",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              },
+              "X-Correlation-ID": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedPlan"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMedia"
+          }
+        },
+        "x-required-roles": [
+          "settings"
+        ],
+        "x-implementation-status": "source_authored_not_executed",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportCommitRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/workflow-alerts": {
+      "get": {
+        "operationId": "getScopedWorkflowAlerts",
+        "summary": "追加機能の公開集約と権限付き通知詳細",
+        "tags": [
+          "docs5補足"
+        ],
+        "description": "summaryは機微情報のない固定メッセージのみ。settingsは案/適用の詳細と本人の出力、recordsは本人の出力、viewer/operatorは詳細なし。非許可IDを含む通知を返さない。next_cursorは同じ本人・役割・世代に束縛。GETで確認/復旧/準備を実行しない。 docs8: ソース候補へ反映済み。試験未実施。",
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "追加機能の公開集約と権限付き通知詳細",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              },
+              "X-Correlation-ID": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowAlerts"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "x-required-roles": [
+          "viewer",
+          "operator",
+          "records",
+          "settings"
+        ],
+        "x-implementation-status": "source_authored_not_executed"
+      }
+    },
+    "/v1/admin/notifications/{notification_id}/acknowledgements": {
+      "post": {
+        "operationId": "acknowledgeWorkflowNotificationSummary",
+        "summary": "通知の公開集約を確認済みにする",
+        "tags": [
+          "docs5補足"
+        ],
+        "description": "全通知コードでX-Expected-GenerationとIdempotency-Keyが必須。本文{}。世代/状態を同じ書込TXで検査。世代は冪等fingerprintへ含める。新キーの古い世代/解消済みは409。成功済みの同キー・同本文・同世代の再送は有効期限内の元応答を返し、再発世代を変更しない。現在の権限/CSRFは毎回必要。同世代が既に確認済みなら確認者を上書きしない。 docs8: ソース候補へ反映済み。試験未実施。",
+        "security": [
+          {
+            "AdminSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/NotificationId"
+          },
+          {
+            "$ref": "#/components/parameters/ExpectedNotificationGeneration"
+          },
+          {
+            "$ref": "#/components/parameters/CSRF"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "maxLength": 36,
+              "minLength": 36
+            },
+            "description": "全通知で必須。現在の実装はUUID。新画面は小文字標準UUIDを使用。"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "通知の公開集約を確認済みにする",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "const": "no-store"
+                }
+              },
+              "X-Correlation-ID": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 255
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Acknowledged"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthenticated"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "413": {
+            "$ref": "#/components/responses/TooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMedia"
+          }
+        },
+        "x-required-roles": [
+          "operator",
+          "settings"
+        ],
+        "x-implementation-status": "source_authored_not_executed",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmptyObject"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AdminSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "admin_session",
+        "description": "既存のHttpOnly/SameSite=Strictセッション。HTTPS時Secure。セッション期限と現在の役割/有効状態を毎回検証。"
+      }
+    },
+    "parameters": {
+      "PlanId": {
+        "name": "plan_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 36,
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "AttemptId": {
+        "name": "attempt_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 36,
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "ExportId": {
+        "name": "export_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 36,
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "maxLength": 2048,
+          "minLength": 1
+        },
+        "description": "署名付き不透明値。所有者/用途/条件/ページ件数に束縛。有効15分。"
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        }
+      },
+      "CSRF": {
+        "name": "X-CSRF-Token",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "description": "現在のadmin_sessionに結び付いたCSRFトークン。"
+      },
+      "Idempotency": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 64,
+          "minLength": 1
+        },
+        "description": "既存uuid.UUIDで受理されるUUID文字列。新画面は小文字ハイフン付き36文字に統一し、再送時に表記を変えない。現行のキー識別はヘッダーの元文字列。同一本人/パス/本文は24時間同じ成功応答。期限後409、記録保持。"
+      },
+      "NotificationId": {
+        "name": "notification_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 36,
+          "format": "uuid",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        }
+      },
+      "ExpectedNotificationGeneration": {
+        "name": "X-Expected-Generation",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "description": "全通知コードで必須。表示した世代の正の十進整数。省略は409再読込、形式不正は400、世代違い/解消済みは409。"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "correlation_id": {
+            "type": "string",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable",
+          "correlation_id"
+        ],
+        "additionalProperties": false,
+        "description": "既存と同じ4キー。JSONの追加キーをエラーに含めない。詳細は対応するGETで照合。"
+      },
+      "EventValues": {
+        "type": "object",
+        "properties": {
+          "name_ja": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ssid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32,
+                "description": "UTF-8の実バイト数で32以下。maxLengthの文字数だけでは不十分。"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contact_ja": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contact_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "period_confirmed": {
+            "type": "boolean"
+          },
+          "service_start_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "service_end_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name_ja",
+          "name_en",
+          "ssid",
+          "contact_ja",
+          "contact_en",
+          "period_confirmed",
+          "service_start_utc",
+          "service_end_utc"
+        ],
+        "additionalProperties": false,
+        "description": "既存8キー。空文字はnullに正規化、文字列はtrim、制御文字不可。日時は両方nullまたは両方指定し開始<終了。period_confirmed=trueなら日時必須。"
+      },
+      "EventValuesInput": {
+        "type": "object",
+        "properties": {
+          "name_ja": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 65536,
+                "description": "trim後120文字以内。"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 65536,
+                "description": "trim後120文字以内。"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ssid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 65536,
+                "description": "trim後のUTF-8実バイト数32以下。"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contact_ja": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 65536,
+                "description": "trim後200文字以内。"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contact_en": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 65536,
+                "description": "trim後200文字以内。"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "period_confirmed": {
+            "type": "boolean"
+          },
+          "service_start_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "service_end_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name_ja",
+          "name_en",
+          "ssid",
+          "contact_ja",
+          "contact_en",
+          "period_confirmed",
+          "service_start_utc",
+          "service_end_utc"
+        ],
+        "additionalProperties": false,
+        "description": "既存入力との互換用。本文全体64KiB以内。文字上限はtrim後に適用し、空文字はnullへ。制御文字禁止・日時の組と順序はEventValuesと同じ。"
+      },
+      "CurrentInformation": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "$ref": "#/components/schemas/EventValues"
+          },
+          "config_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "local_display_only"
+            ]
+          }
+        },
+        "required": [
+          "values",
+          "config_sha256",
+          "scope"
+        ],
+        "additionalProperties": false,
+        "description": "既存GET。valuesは現プロセスの読込設定、config_sha256はディスクの現在ファイル。両者が同じ版とは限らない。"
+      },
+      "SavePlanRequest": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "$ref": "#/components/schemas/EventValuesInput"
+          },
+          "config_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "values",
+          "config_sha256"
+        ],
+        "additionalProperties": false
+      },
+      "SavedPlan": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "filename": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "values": {
+            "$ref": "#/components/schemas/EventValues"
+          },
+          "applied": {
+            "const": false
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "local_display_only"
+            ]
+          }
+        },
+        "required": [
+          "plan_id",
+          "filename",
+          "values",
+          "applied",
+          "scope"
+        ],
+        "additionalProperties": false
+      },
+      "Plan": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "created_by": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "created_at_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "base_values": {
+            "$ref": "#/components/schemas/EventValues"
+          },
+          "values": {
+            "$ref": "#/components/schemas/EventValues"
+          },
+          "content_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "base_config_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "source_file_status": {
+            "type": "string",
+            "enum": [
+              "matches",
+              "missing",
+              "mismatch",
+              "unreadable",
+              "not_checked"
+            ]
+          },
+          "current_config_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 64,
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "base_config_matches": {
+            "type": "boolean"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "saved",
+              "review_pending",
+              "reviewed",
+              "withdrawn"
+            ]
+          },
+          "effective_state": {
+            "type": "string",
+            "enum": [
+              "saved",
+              "review_pending",
+              "reviewed",
+              "review_required",
+              "withdrawn"
+            ]
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "review_expired",
+                "base_config_changed",
+                "config_unavailable",
+                "plan_file_unavailable",
+                "plan_file_changed",
+                "reviewer_disabled",
+                "reviewer_role_changed",
+                "restore_reconfirmation_required",
+                "import_provenance_unverified",
+                "target_mismatch"
+              ]
+            }
+          },
+          "review_event_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36,
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_valid_until_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewer_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "local_display_only"
+            ]
+          },
+          "import_provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target_matches": {
+            "type": "boolean",
+            "description": "保存済みtarget_hashと現在homeの対象識別を照合。実パスは返さない。falseは過去案として参照のみ。"
+          }
+        },
+        "required": [
+          "plan_id",
+          "version",
+          "created_by",
+          "created_at_utc",
+          "base_values",
+          "values",
+          "content_sha256",
+          "base_config_sha256",
+          "source_file_status",
+          "current_config_sha256",
+          "base_config_matches",
+          "state",
+          "effective_state",
+          "reason_codes",
+          "review_event_id",
+          "review_valid_until_utc",
+          "reviewer_id",
+          "scope",
+          "import_provenance",
+          "target_matches"
+        ],
+        "additionalProperties": false
+      },
+      "PlanEvent": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "plan_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "created",
+              "review_requested",
+              "review_recorded",
+              "withdrawn"
+            ]
+          },
+          "state_after": {
+            "type": "string",
+            "enum": [
+              "saved",
+              "review_pending",
+              "reviewed",
+              "withdrawn"
+            ]
+          },
+          "actor_id": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "created_at_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "confirmed_content_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 64,
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "review_valid_until_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^[^\\x00-\\x1f\\x7f]*$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "event_id",
+          "plan_id",
+          "version",
+          "kind",
+          "state_after",
+          "actor_id",
+          "created_at_utc",
+          "confirmed_content_sha256",
+          "review_valid_until_utc",
+          "reason_code",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewRequest": {
+        "type": "object",
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "content_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^[^\\x00-\\x1f\\x7f]*$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expected_version",
+          "content_sha256",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewRecordRequest": {
+        "type": "object",
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "content_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^[^\\x00-\\x1f\\x7f]*$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expected_version",
+          "content_sha256",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "WithdrawalRequest": {
+        "type": "object",
+        "properties": {
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "content_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "reason_code": {
+            "type": "string",
+            "enum": [
+              "change_needed",
+              "duplicate",
+              "not_required"
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "pattern": "^[^\\x00-\\x1f\\x7f]*$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expected_version",
+          "content_sha256",
+          "reason_code",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "ApplyObservation": {
+        "type": "object",
+        "properties": {
+          "observation_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "file_written",
+              "not_written",
+              "conflict",
+              "unknown"
+            ]
+          },
+          "observed_config_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 64,
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence_code": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "created_at_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          }
+        },
+        "required": [
+          "observation_id",
+          "version",
+          "outcome",
+          "observed_config_sha256",
+          "evidence_code",
+          "created_at_utc"
+        ],
+        "additionalProperties": false
+      },
+      "ApplyAttempt": {
+        "type": "object",
+        "properties": {
+          "attempt_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "review_event_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "before_config_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "expected_after_config_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "latest_observation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApplyObservation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "attempt_id",
+          "created_at_utc",
+          "review_event_id",
+          "before_config_sha256",
+          "expected_after_config_sha256",
+          "latest_observation"
+        ],
+        "additionalProperties": false
+      },
+      "ApplyAttemptList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplyAttempt"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "ApplyObservationList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplyObservation"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "ApplicationStatus": {
+        "type": "object",
+        "properties": {
+          "plan_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "latest_attempt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApplyAttempt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "config_file_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 64,
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "file_relation": {
+            "type": "string",
+            "enum": [
+              "not_attempted",
+              "before",
+              "expected_after",
+              "subsequent_known",
+              "other",
+              "unavailable"
+            ]
+          },
+          "superseding_plan_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36,
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "app_instance_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "app_loaded_config_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "worker_instance_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36,
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "worker_loaded_config_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 64,
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "worker_last_seen_at_utc": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "worker_freshness": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "stale",
+              "unknown"
+            ]
+          },
+          "activation_state": {
+            "type": "string",
+            "enum": [
+              "not_attempted",
+              "unknown",
+              "restart_required",
+              "partial",
+              "matched",
+              "superseded",
+              "conflict"
+            ]
+          },
+          "network_verified": {
+            "const": false
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "local_display_only"
+            ]
+          }
+        },
+        "required": [
+          "plan_id",
+          "latest_attempt",
+          "config_file_sha256",
+          "file_relation",
+          "superseding_plan_id",
+          "app_instance_id",
+          "app_loaded_config_sha256",
+          "worker_instance_id",
+          "worker_loaded_config_sha256",
+          "worker_last_seen_at_utc",
+          "worker_freshness",
+          "activation_state",
+          "network_verified",
+          "scope"
+        ],
+        "additionalProperties": false,
+        "description": "GETで履歴を書換えない。worker生存30秒未満と起動ID・ハッシュを照合。matchedもAP通信許可を証明しない。"
+      },
+      "ArchiveFilters": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "accepted_start_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "accepted_end_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "deadline_scope": {
+            "type": "string",
+            "enum": [
+              "all",
+              "within_processing_deadline",
+              "processing_deadline_elapsed"
+            ]
+          }
+        },
+        "required": [
+          "event_id",
+          "accepted_start_utc",
+          "accepted_end_utc",
+          "language",
+          "deadline_scope"
+        ],
+        "additionalProperties": false,
+        "description": "開始以上/終了未満。両日時必須、最大31日（2678400秒）。language=nullは全言語。期限区分はas_ofで比較。"
+      },
+      "ConsentArchiveRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "event_id": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "terms_version": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "terms_sha256": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "policy_version": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "accepted_at_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "delete_after": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "deadline_scope": {
+            "type": "string",
+            "enum": [
+              "within_processing_deadline",
+              "processing_deadline_elapsed"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "event_id",
+          "terms_version",
+          "terms_sha256",
+          "policy_version",
+          "accepted_at_utc",
+          "language",
+          "delete_after",
+          "deadline_scope"
+        ],
+        "additionalProperties": false,
+        "description": "検索JSON用。CSVはdeadline_scopeを除く既存8列。通信状態を含めない。"
+      },
+      "ArchiveSearch": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsentArchiveRow"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "as_of_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "target_fixed": {
+            "const": false
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "as_of_utc",
+          "target_fixed"
+        ],
+        "additionalProperties": false,
+        "description": "通常の検索一覧。後続ページまで完全に固定した対象ではない。"
+      },
+      "CreateExportRequest": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "$ref": "#/components/schemas/ArchiveFilters"
+          },
+          "retry_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36,
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "filters",
+          "retry_of"
+        ],
+        "additionalProperties": false,
+        "description": "retry_of=nullは新規。再依頼は本人・同一filters・failedかつ子が存在しない末端のみ。書込ロック下で検査。違反は409 retry_source_invalid。新しいas_of・新ID。"
+      },
+      "ExportAccepted": {
+        "type": "object",
+        "properties": {
+          "export_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued"
+            ]
+          },
+          "as_of_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "status_path": {
+            "type": "string",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "export_id",
+          "state",
+          "as_of_utc",
+          "status_path"
+        ],
+        "additionalProperties": false
+      },
+      "SnapshotSummary": {
+        "type": "object",
+        "properties": {
+          "snapshot_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "snapshot_started_at_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "prepared_at_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "total_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "rows_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "first_page_cursor": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 1
+          },
+          "csv_columns": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "const": "id"
+              },
+              {
+                "const": "event_id"
+              },
+              {
+                "const": "terms_version"
+              },
+              {
+                "const": "terms_sha256"
+              },
+              {
+                "const": "policy_version"
+              },
+              {
+                "const": "accepted_at_utc"
+              },
+              {
+                "const": "language"
+              },
+              {
+                "const": "delete_after"
+              }
+            ],
+            "items": false,
+            "minItems": 8,
+            "maxItems": 8
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "snapshot_started_at_utc",
+          "prepared_at_utc",
+          "total_count",
+          "rows_sha256",
+          "first_page_cursor",
+          "csv_columns"
+        ],
+        "additionalProperties": false,
+        "description": "ready時のみ公開。first_page_cursorは毎回再発行でき、取得自体は既存の封印対象を変更しない。"
+      },
+      "ExportJob": {
+        "type": "object",
+        "properties": {
+          "export_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "owner_id": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "filters": {
+            "$ref": "#/components/schemas/ArchiveFilters"
+          },
+          "filters_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "as_of_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "created_at_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "preparing",
+              "ready",
+              "failed"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "retry_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36,
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "row_limit_exceeded",
+                  "source_read_interrupted",
+                  "storage_unavailable",
+                  "preparation_interrupted",
+                  "snapshot_integrity_error"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SnapshotSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "preparing",
+              "ready",
+              "failed",
+              "recovery_required"
+            ]
+          }
+        },
+        "required": [
+          "export_id",
+          "owner_id",
+          "filters",
+          "filters_sha256",
+          "as_of_utc",
+          "created_at_utc",
+          "state",
+          "version",
+          "retry_of",
+          "error_code",
+          "snapshot",
+          "effective_state"
+        ],
+        "additionalProperties": false,
+        "description": "stateは原本の処理状態、effective_stateは起動世代/復旧ガードを含む操作状態。snapshotはeffective_state=readyの時だけ公開。他人の依頼はsettingsでも404。"
+      },
+      "ArchiveExportEvent": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "export_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "preparing",
+              "ready",
+              "failed",
+              "download_requested",
+              "page_generated",
+              "stream_interrupted"
+            ]
+          },
+          "actor_type": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "worker",
+              "recovery_cli"
+            ]
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "correlation_id": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "page_start": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "page_end": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "page_sha256": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 64,
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "event_id",
+          "export_id",
+          "kind",
+          "actor_type",
+          "actor_id",
+          "created_at_utc",
+          "correlation_id",
+          "page_start",
+          "page_end",
+          "page_sha256",
+          "evidence_code"
+        ],
+        "additionalProperties": false
+      },
+      "PlanList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Plan"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "PlanEvents": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanEvent"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "ExportList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportJob"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "ExportEvents": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArchiveExportEvent"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "additionalProperties": false
+      },
+      "ImportProvenance": {
+        "type": "object",
+        "properties": {
+          "source_plan_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "source_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "report_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "report_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "report_missing",
+              "report_mismatch",
+              "not_checked"
+            ]
+          }
+        },
+        "required": [
+          "source_plan_id",
+          "source_sha256",
+          "report_id",
+          "report_sha256",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "ImportCommitRequest": {
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "report_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "expected_config_sha256": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "report_id",
+          "report_sha256",
+          "expected_config_sha256"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowAlertSummary": {
+        "type": "object",
+        "properties": {
+          "notification_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warning",
+              "critical"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "acknowledged",
+              "resolved"
+            ]
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "notification_id",
+          "code",
+          "severity",
+          "state",
+          "generation",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowAlertDetail": {
+        "type": "object",
+        "properties": {
+          "alert_id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "info",
+              "warning",
+              "critical"
+            ]
+          },
+          "resource_kind": {
+            "type": "string",
+            "enum": [
+              "event_plan",
+              "apply_attempt",
+              "archive_export",
+              "recovery"
+            ]
+          },
+          "resource_id": {
+            "type": "string",
+            "maxLength": 36,
+            "format": "uuid",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "plan_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36,
+                "format": "uuid",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_seen_at_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "open_plan",
+              "open_application_status",
+              "open_own_export",
+              "contact_server_operator"
+            ]
+          },
+          "effective_state": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "alert_id",
+          "code",
+          "severity",
+          "resource_kind",
+          "resource_id",
+          "plan_id",
+          "first_seen_at_utc",
+          "message",
+          "action",
+          "effective_state"
+        ],
+        "additionalProperties": false
+      },
+      "WorkflowAlerts": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowAlertSummary"
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowAlertDetail"
+            }
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observed_at_utc": {
+            "type": "string",
+            "maxLength": 20,
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+          },
+          "complete_snapshot": {
+            "const": false
+          }
+        },
+        "required": [
+          "summary",
+          "items",
+          "next_cursor",
+          "observed_at_utc",
+          "complete_snapshot"
+        ],
+        "additionalProperties": false
+      },
+      "EmptyObject": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "Acknowledged": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "const": true
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "400 不正なキー/型/日時/検索条件/重複クエリ/カーソル。",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "要求と監査を照合するID。現行実装と同じ。",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          },
+          "Cache-Control": {
+            "description": "管理画面/記録は保存キャッシュ不可。",
+            "schema": {
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unauthenticated": {
+        "description": "401 再ログインが必要。",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "要求と監査を照合するID。現行実装と同じ。",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          },
+          "Cache-Control": {
+            "description": "管理画面/記録は保存キャッシュ不可。",
+            "schema": {
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "403 権限/CSRF/作成者による自己確認の不許可。",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "要求と監査を照合するID。現行実装と同じ。",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          },
+          "Cache-Control": {
+            "description": "管理画面/記録は保存キャッシュ不可。",
+            "schema": {
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "404 未検出、または本人以外の出力依頼。存在を区別しない。",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "要求と監査を照合するID。現行実装と同じ。",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          },
+          "Cache-Control": {
+            "description": "管理画面/記録は保存キャッシュ不可。",
+            "schema": {
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "409 版・設定・状態の競合、期限超過、同時依頼、未封印。GETで現在状態を取得する。",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "要求と監査を照合するID。現行実装と同じ。",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          },
+          "Cache-Control": {
+            "description": "管理画面/記録は保存キャッシュ不可。",
+            "schema": {
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "TooLarge": {
+        "description": "413 JSON本文64KiB超過。",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "要求と監査を照合するID。現行実装と同じ。",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          },
+          "Cache-Control": {
+            "description": "管理画面/記録は保存キャッシュ不可。",
+            "schema": {
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "UnsupportedMedia": {
+        "description": "415 JSON以外の本文。",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "要求と監査を照合するID。現行実装と同じ。",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          },
+          "Cache-Control": {
+            "description": "管理画面/記録は保存キャッシュ不可。",
+            "schema": {
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "429 上限制御。現行共通ハンドラーと合わせRetry-Afterは900秒。",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "要求と監査を照合するID。現行実装と同じ。",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          },
+          "Cache-Control": {
+            "description": "管理画面/記録は保存キャッシュ不可。",
+            "schema": {
+              "const": "no-store"
+            }
+          },
+          "Retry-After": {
+            "schema": {
+              "const": "900"
+            },
+            "description": "秒数。自動再送する場合も同じIdempotency-Key。"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Unavailable": {
+        "description": "503 DB/保存領域/ロック/依存処理が利用不可。結果不明時は新しいキーで再実行せず照合。",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "要求と監査を照合するID。現行実装と同じ。",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          },
+          "Cache-Control": {
+            "description": "管理画面/記録は保存キャッシュ不可。",
+            "schema": {
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "500 詳細を返さずcorrelation_idで運営担当が照合。",
+        "headers": {
+          "X-Correlation-ID": {
+            "description": "要求と監査を照合するID。現行実装と同じ。",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          },
+          "Cache-Control": {
+            "description": "管理画面/記録は保存キャッシュ不可。",
+            "schema": {
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-design-status": {
+    "new_features_implemented": false,
+    "current_schema_version": 4,
+    "proposed_schema_version": 5,
+    "documented_operations": 20,
+    "existing_operations": 3,
+    "proposed_operations": 17,
+    "database_applied": false,
+    "tests_executed": false,
+    "production_enabled": false,
+    "automatic_deletion_enabled": false
+  },
+  "x-common-rules": {
+    "json_request_max_bytes": 65536,
+    "unknown_fields": "reject",
+    "duplicate_query_parameters": "reject",
+    "write_headers": [
+      "X-CSRF-Token",
+      "Idempotency-Key"
+    ],
+    "review_valid_seconds_candidate": 86400,
+    "idempotency_response_seconds": 86400,
+    "cursor_valid_seconds_candidate": 900,
+    "csv_rows_per_page": 1000,
+    "export_row_limit_candidate": 100000,
+    "export_range_seconds_candidate": 2678400,
+    "export_workers_candidate": 1,
+    "owner_active_jobs_candidate": 1,
+    "workflow_summary_codes": [
+      "plan_review_pending",
+      "plan_review_required",
+      "plan_apply_unknown",
+      "plan_activation_pending",
+      "archive_export_failed",
+      "schema5_recovery_required"
+    ],
+    "notification_acknowledgement_scope": "all_notification_codes",
+    "export_retry_source": "owned_same_filters_failed_leaf_without_children_under_write_lock",
+    "restore_generation_origin": "fresh_or_restored; receipt_required_only_for_restored",
+    "review_causality": "server_generated_g_marker_equals_current_generation; same_UTC_second_alone_is_not_rejection"
+  },
+  "x-implementation-status": "source_authored_not_executed",
+  "x-policy-approval-required": true,
+  "x-legacy-tests-status": "historical_schema4_suite_retained; schema5 acceptance not executed",
+  "x-runtime-observation-proposals": {
+    "heartbeat_seconds": 10,
+    "stale_after_seconds": 30,
+    "activation_grace_seconds": 60
+  },
+  "x-runtime-observation-approval": "Heartbeat and workflow monitoring disabled until workflow_policy.approved=true; old observations are not treated as fresh while unapproved."
+}

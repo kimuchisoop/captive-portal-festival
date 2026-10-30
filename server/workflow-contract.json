@@ -1,0 +1,1762 @@
+{
+  "document_revision": "docs5",
+  "status": "candidate_not_implemented",
+  "schema_version": "5",
+  "format": "festival-wifi-stream-backup-v2",
+  "codec_version": "1",
+  "encryption_container": "SFFRAME1",
+  "plaintext_max_line_bytes": 4194304,
+  "tables": [
+    {
+      "name": "meta",
+      "columns": [
+        {
+          "name": "name",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "value",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "name"
+      ]
+    },
+    {
+      "name": "terms_documents",
+      "columns": [
+        {
+          "name": "document_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "language",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "version",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "sha256",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "body",
+          "sql_type": "MEDIUMTEXT",
+          "codec": "utf8",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "document_id",
+        "language"
+      ]
+    },
+    {
+      "name": "admins",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "username",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "password_hash",
+          "sql_type": "MEDIUMTEXT",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "role",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "sessions",
+      "columns": [
+        {
+          "name": "token_hash",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "kind",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "owner_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "csrf_hash",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "token_hash"
+      ]
+    },
+    {
+      "name": "login_limits",
+      "columns": [
+        {
+          "name": "bucket",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "count",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "bucket"
+      ]
+    },
+    {
+      "name": "launches",
+      "columns": [
+        {
+          "name": "token_hash",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "connection_ref",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "owner_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "context_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": true
+        }
+      ],
+      "primary": [
+        "token_hash"
+      ]
+    },
+    {
+      "name": "contexts",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "owner_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "connection_ref",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "consents",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "event_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "service_window_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "terms_document_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "terms_version",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "terms_sha256",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "policy_version",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "accepted_at_utc",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "language",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "accepted",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "consent_method",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "connection_ref",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "request_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "delete_after",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "seq",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "grants",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "consent_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "owner_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "connection_ref",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "authorization_status",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "observation_state",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "revocation_state",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "authorized_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "original_expires_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "last_observed_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "revoked_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "delete_after",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "row_version",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "seq",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "operations",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "grant_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "action",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "reason_code",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "actor",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "attempts",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "next_attempt",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "last_error_code",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "correlation_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "delete_after",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "idempotency",
+      "columns": [
+        {
+          "name": "owner_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "path",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "request_key",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "body_hash",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "response",
+          "sql_type": "MEDIUMTEXT",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "expires_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "owner_id",
+        "path",
+        "request_key"
+      ]
+    },
+    {
+      "name": "audit",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "actor",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "action",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "object_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "delete_after",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "notifications",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "dedupe_key",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "severity",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "code",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "message",
+          "sql_type": "MEDIUMTEXT",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "state",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "first_seen",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "last_seen",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "acknowledged_by",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "acknowledged_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "generation",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "notification_updates",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "notification_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "generation",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "actor",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "assignee",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "sql_type": "VARCHAR(32)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "note",
+          "sql_type": "VARCHAR(1000)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "seq",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "terms_revisions",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "version",
+          "sql_type": "VARCHAR(80)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "policy_version",
+          "sql_type": "VARCHAR(80)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "ja",
+          "sql_type": "MEDIUMTEXT",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "en",
+          "sql_type": "MEDIUMTEXT",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "actor",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "seq",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "terms_publications",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "revision_id",
+          "sql_type": "VARCHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "actor",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "seq",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "mfa_settings",
+      "columns": [
+        {
+          "name": "admin_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "secret_ciphertext",
+          "sql_type": "MEDIUMTEXT",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "generation",
+          "sql_type": "VARCHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "enabled",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "needs_reset",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "last_counter",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "admin_id"
+      ]
+    },
+    {
+      "name": "mfa_recovery",
+      "columns": [
+        {
+          "name": "admin_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "generation",
+          "sql_type": "VARCHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "code_hash",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "used_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": true
+        }
+      ],
+      "primary": [
+        "admin_id",
+        "generation",
+        "code_hash"
+      ]
+    },
+    {
+      "name": "storage_samples",
+      "columns": [
+        {
+          "name": "bucket",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "observed_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "database_bytes",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "backup_bytes",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "application_free_bytes",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "bucket"
+      ]
+    },
+    {
+      "name": "backup_checks",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "filename",
+          "sql_type": "VARCHAR(120)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "stage",
+          "sql_type": "VARCHAR(16)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "status",
+          "sql_type": "VARCHAR(16)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "code",
+          "sql_type": "VARCHAR(80)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "ciphertext_sha256",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "file_bytes",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "file_mtime_ns",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "actor",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "checked_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "seq",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "support_exports",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "actor",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "sha256",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "bytes",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "seq",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "checklist_runs",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "event_day",
+          "sql_type": "VARCHAR(10)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "phase",
+          "sql_type": "VARCHAR(16)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "checklist_version",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "actor",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "checklist_entries",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "VARCHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "run_id",
+          "sql_type": "VARCHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "item_id",
+          "sql_type": "VARCHAR(60)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "actor",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "assignee",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "outcome",
+          "sql_type": "VARCHAR(16)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "note",
+          "sql_type": "VARCHAR(1000)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "checked_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "seq",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "event_info_plans",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "created_by",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "target_hash",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "base_config_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "content_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "base_values_json",
+          "sql_type": "JSON",
+          "codec": "json-object-v1",
+          "nullable": false
+        },
+        {
+          "name": "values_json",
+          "sql_type": "JSON",
+          "codec": "json-object-v1",
+          "nullable": false
+        },
+        {
+          "name": "source_file_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "source_file",
+          "sql_type": "VARCHAR(96)",
+          "codec": "utf8",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "event_info_plan_events",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "plan_id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "plan_version",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "kind",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "state_after",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "actor_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "confirmed_content_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "review_valid_until",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "reason_code",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "note",
+          "sql_type": "VARCHAR(500)",
+          "codec": "utf8",
+          "nullable": true
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "event_info_apply_attempts",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "plan_id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "review_event_id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "plan_version",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "requested_by",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "correlation_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "content_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "before_config_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "expected_after_config_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "new_service_window_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "history_prefix",
+          "sql_type": "VARCHAR(96)",
+          "codec": "utf8",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "event_info_apply_observations",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "attempt_id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "observation_version",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "outcome",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "observed_config_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "evidence_code",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "actor",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "consent_archive_exports",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "owner_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "filters_json",
+          "sql_type": "JSON",
+          "codec": "json-object-v1",
+          "nullable": false
+        },
+        {
+          "name": "filters_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "as_of",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "state",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "row_version",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "retry_of_id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "error_code",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": true
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "consent_archive_snapshots",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "export_id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "snapshot_started_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "prepared_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "state",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "item_count",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "rows_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "error_code",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": true
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    },
+    {
+      "name": "consent_archive_items",
+      "columns": [
+        {
+          "name": "snapshot_id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "ordinal",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "consent_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "source_seq",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "event_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "terms_version",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "terms_sha256",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "policy_version",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "accepted_at_utc",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "language",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "delete_after",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "deadline_scope",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "row_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        }
+      ],
+      "primary": [
+        "snapshot_id",
+        "ordinal"
+      ]
+    },
+    {
+      "name": "consent_archive_events",
+      "columns": [
+        {
+          "name": "id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "export_id",
+          "sql_type": "CHAR(36)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "kind",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "actor_type",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "actor_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "sql_type": "BIGINT",
+          "codec": "i64-decimal",
+          "nullable": false
+        },
+        {
+          "name": "correlation_id",
+          "sql_type": "VARCHAR(255)",
+          "codec": "utf8",
+          "nullable": false
+        },
+        {
+          "name": "page_start",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "page_end",
+          "sql_type": "BIGINT UNSIGNED",
+          "codec": "u64-decimal",
+          "nullable": true
+        },
+        {
+          "name": "page_sha256",
+          "sql_type": "CHAR(64)",
+          "codec": "utf8",
+          "nullable": true
+        },
+        {
+          "name": "evidence_code",
+          "sql_type": "VARCHAR(64)",
+          "codec": "utf8",
+          "nullable": true
+        }
+      ],
+      "primary": [
+        "id"
+      ]
+    }
+  ],
+  "restore_excluded_tables": [
+    "sessions",
+    "login_limits",
+    "launches",
+    "contexts",
+    "idempotency"
+  ],
+  "canonical_json": {
+    "encoding": "UTF-8",
+    "sort_keys": true,
+    "ensure_ascii": false,
+    "separators": [
+      ",",
+      ":"
+    ],
+    "allow_nan": false,
+    "line_ending": "LF",
+    "bom": false
+  },
+  "integer_cells": "canonical decimal strings; i64 -9223372036854775808..9223372036854775807; u64 0..18446744073709551615",
+  "json_cells": "canonical object JSON encoded as one string cell; current three JSON columns follow EventValues/ArchiveFilters shapes"
+}

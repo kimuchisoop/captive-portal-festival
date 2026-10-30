@@ -1,0 +1,31 @@
+'use strict';
+const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..');let passed=0;
+function test(fn){fn();passed++;}
+const events={},clicks={},banner={hidden:true,textContent:''},forms=[];
+const doc={querySelectorAll:()=>forms,contains:f=>forms.includes(f),getElementById:id=>id==='draft-warning'?banner:{},addEventListener:(name,fn)=>clicks[name]=fn};
+const win={addEventListener:(name,fn)=>events[name]=fn};let confirmation=false;
+const context={document:doc,window:win,MutationObserver:class{observe(){}},confirm:()=>confirmation,queueMicrotask:fn=>fn()};
+vm.runInNewContext(fs.readFileSync(path.join(root,'static/edit-guard.js'),'utf8'),context);
+function form(value){const input={id:'note',type:'textarea',value},f={isConnected:true,querySelectorAll:()=>[input],contains:other=>other===f};f.input=input;return f;}
+const a=form(''),b=form('');forms.push(a,b);win.EditGuard.update();
+test(()=>assert.equal(banner.hidden,true));
+a.input.value='unsaved';win.EditGuard.update();test(()=>assert.match(banner.textContent,/1件/));
+test(()=>{let prevented=false;events.beforeunload({preventDefault(){prevented=true;}});assert.equal(prevented,true);});
+test(()=>assert.equal(win.EditGuard.confirmReplace(a),false));
+test(()=>{let stopped=false;clicks.click({target:{closest:()=>({id:'logout',tagName:'BUTTON'})},preventDefault(){},stopImmediatePropagation(){stopped=true;}});assert.equal(stopped,true);});
+test(()=>{confirmation=true;assert.equal(win.EditGuard.confirmReplace(a),true);});
+test(()=>{const sent=win.EditGuard.capture(a);a.input.value='typed during save';win.EditGuard.saved(a,sent);assert.equal(banner.hidden,false);});
+test(()=>{win.EditGuard.saved(a,win.EditGuard.capture(a));assert.equal(banner.hidden,true);});
+test(()=>{b.input.value='other draft';win.EditGuard.saved(a,win.EditGuard.capture(a));assert.match(banner.textContent,/1件/);});
+test(()=>{b.isConnected=false;forms.splice(forms.indexOf(b),1);win.EditGuard.update();assert.equal(banner.hidden,true);});
+const listeners={},elements={},clock={now:0};let callback,expired=0;
+for(const id of ['session-remaining','session-warning','session-check'])elements[id]={textContent:'',hidden:true,addEventListener(name,fn){this[name]=fn;}};
+const clockWindow={addEventListener:(name,fn)=>listeners[name]=fn,dispatchEvent:event=>{if(event.type==='operator-expired')expired++;}};
+vm.runInNewContext(fs.readFileSync(path.join(root,'static/session-clock.js'),'utf8'),{document:{getElementById:id=>elements[id],addEventListener(){},hidden:false},window:clockWindow,performance:{now:()=>clock.now},setInterval:fn=>{callback=fn;return 1;},clearInterval(){},Event:class{constructor(type){this.type=type;}},fetch(){throw Error('Unexpected automatic fetch');}});
+const info={server_now_utc:'2026-10-20T00:00:00Z',expires_at_utc:'2026-10-20T00:03:00Z'};
+test(()=>{listeners['operator-session-time']({detail:info});assert.match(elements['session-remaining'].textContent,/3分0秒/);assert.equal(elements['session-warning'].hidden,true);});
+test(()=>{clock.now=61000;callback();assert.equal(elements['session-warning'].hidden,false);assert.match(elements['session-remaining'].textContent,/1分59秒/);});
+test(()=>{clock.now=180000;callback();assert.equal(expired,1);});
+test(()=>{listeners['operator-session']({detail:null});assert.equal(elements['session-warning'].hidden,true);assert.equal(elements['session-remaining'].textContent,'');});
+console.log(JSON.stringify({passed,failed:0,checks:['unsaved signatures','beforeunload','replacement confirmation','cancel logout','edits during pending save remain dirty','other draft preserved','detached forms released','server anchored countdown','two minute warning','expiry event','logout clears clock']}));

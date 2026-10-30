@@ -1,0 +1,113 @@
+'use strict';
+(() => {
+  // Generated minimum definitions; edit dev/response-contracts.source.json.
+  const shapes=__SFF_RESPONSE_SHAPES__;
+  const rules=__SFF_RESPONSE_RULES__;
+  const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v),own=(v,k)=>Object.prototype.hasOwnProperty.call(v,k);
+  function validDateTime(value){
+    if(typeof value!=='string')return false;
+    const match=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
+    if(!match||match[0]!==value)return false;
+    const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]);
+    const hour=Number(match[4]),minute=Number(match[5]),second=Number(match[6]);
+    const offsetHour=Number(match[10]||0),offsetMinute=Number(match[11]||0);
+    if(year<1||month<1||month>12||hour>23||minute>59||second>59||offsetHour>23||offsetMinute>59)return false;
+    const leap=year%4===0&&(year%100!==0||year%400===0);
+    const months=[31,leap?29:28,31,30,31,30,31,31,30,31,30,31];
+    if(day<1||day>months[month-1])return false;
+    const beforeYear=y=>365*(y-1)+Math.floor((y-1)/4)-Math.floor((y-1)/100)+Math.floor((y-1)/400);
+    let days=beforeYear(year)+day-1;
+    for(let i=0;i<month-1;i++)days+=months[i];
+    const offset=(offsetHour*60+offsetMinute)*(match[9]==='-'?-1:1);
+    const utc=days*86400+hour*3600+minute*60+second-offset*60;
+    return utc>=0&&utc<beforeYear(10000)*86400;
+  }
+  function matches(v,s,depth=0){
+    if(depth>32)return false;
+    s=shapes[s];
+    if(s.anyOf&&!s.anyOf.some(x=>matches(v,x,depth+1)))return false;
+    if(s.allOf&&!s.allOf.every(x=>matches(v,x,depth+1)))return false;
+    if(s.if!==undefined&&matches(v,s.if,depth+1)&&s.then!==undefined&&!matches(v,s.then,depth+1))return false;
+    if(own(s,'const')&&v!==s.const)return false;
+    if(s.enum&&!s.enum.includes(v))return false;
+    if(s.type==='null'&&v!==null)return false;
+    if(s.type==='string'&&typeof v!=='string')return false;
+    if(s.type==='boolean'&&typeof v!=='boolean')return false;
+    if(s.type==='integer'&&!Number.isSafeInteger(v))return false;
+    if(s.type==='number'&&(typeof v!=='number'||!Number.isFinite(v)))return false;
+    if(s.type==='array'&&(!Array.isArray(v)||!v.every(x=>matches(x,s.items,depth+1))))return false;
+    if(s.type==='object'&&!object(v))return false;
+    if(s.required&&(!object(v)||!s.required.every(k=>own(v,k))))return false;
+    if(s.propertyEntries&&object(v)&&!s.propertyEntries.every(([k,t])=>!own(v,k)||matches(v[k],t,depth+1)))return false;
+    if(s.compiledPattern&&(typeof v!=='string'||!s.compiledPattern.test(v)))return false;
+    if(s.minLength!==undefined||s.maxLength!==undefined){
+      if(typeof v!=='string')return false;
+      let length=0;for(const character of v)length++;
+      if((s.minLength!==undefined&&length<s.minLength)||(s.maxLength!==undefined&&length>s.maxLength))return false;
+    }
+    if(s.format==='date-time'&&!validDateTime(v))return false;
+    return true;
+  }
+  // Cache only derived definition data, never responses, sessions or permissions.
+  for(const shape of shapes){
+    if(shape.properties)shape.propertyEntries=Object.entries(shape.properties);
+    if(shape.pattern)shape.compiledPattern=new RegExp(shape.pattern);
+  }
+  const ruleGroups=new Map();
+  for(const rule of rules){
+    rule.segments=rule.path.split('/');
+    const key=rule.method+':'+rule.segments.length;
+    if(!ruleGroups.has(key))ruleGroups.set(key,[]);
+    ruleGroups.get(key).push(rule);
+  }
+  function accepts(path,method,value){
+    const segments=new URL(path,location.origin).pathname.split('/');
+    const candidates=ruleGroups.get(method+':'+segments.length)||[];
+    const rule=candidates.find(r=>r.segments.every((p,i)=>p.startsWith('<')?segments[i].length>0:p===segments[i]));
+    return Boolean(rule&&matches(value,rule.schema));
+  }
+  function identityMatches(path,method,value,data,expected={}){
+    try{
+    const url=new URL(path,location.origin),parts=url.pathname.split('/').filter(Boolean).map(p=>decodeURIComponent(p));
+    const language=url.searchParams.get('lang')||'ja';
+    if(method==='GET'&&parts[0]==='v1'&&(parts[1]==='public'||parts[1]==='contexts')){
+      if(value.terms?.language!==language)return false;
+      if(parts[1]==='contexts'&&value.context_id!==parts[2])return false;
+    }
+    if(method==='GET'&&parts[0]==='v1'&&parts[1]==='grants'){
+      if(value.grant_id!==parts[2])return false;
+      if(expected.consent_id!==undefined&&value.consent_id!==expected.consent_id)return false;
+    }
+    if(parts[0]!=='v1'||parts[1]!=='admin')return true;
+    if(method==='GET'&&parts.length===4&&parts[2]==='operations'&&value.id!==parts[3])return false;
+    if(method==='GET'&&parts.length===4&&parts[2]==='terms-revisions'&&value.id!==parts[3])return false;
+    if(parts[2]==='event-information'&&parts[3]==='plans'&&parts[4]){
+      const id=parts[4],suffix=parts[5];
+      if(!suffix||['application-status','review-requests','reviews','withdrawals'].includes(suffix)){
+        if(value.plan_id!==id)return false;
+      }
+      if(method==='GET'&&suffix==='events'&&!value.items.every(item=>item.plan_id===id))return false;
+      if(method==='POST'&&['review-requests','reviews','withdrawals'].includes(suffix)){
+        if(value.content_sha256!==data?.content_sha256||!Number.isSafeInteger(data?.expected_version)||value.version!==data.expected_version+1)return false;
+      }
+    }
+    if(method==='GET'&&parts[2]==='consent-archive-exports'&&parts[3]){
+      if(parts.length===4&&value.export_id!==parts[3])return false;
+      if(parts[4]==='events'&&!value.items.every(item=>item.export_id===parts[3]))return false;
+    }
+    if(method==='POST'&&parts[2]==='backups'&&parts[4]==='checks'&&value.filename!==parts[3])return false;
+    if(method==='GET'&&parts[2]==='checklists'){
+      if(url.searchParams.has('day')&&value.day!==url.searchParams.get('day'))return false;
+      if(url.searchParams.has('phase')&&value.phase!==url.searchParams.get('phase'))return false;
+    }
+    if(method==='GET'&&parts[2]==='usage-summary'&&url.searchParams.has('day')&&value.day_jst!==url.searchParams.get('day'))return false;
+    if(method==='GET'&&parts[2]==='consent-archives'){
+      const event=url.searchParams.get('event_id'),lang=url.searchParams.get('language');
+      if(event&&!value.items.every(item=>item.event_id===event))return false;
+      if(lang&&!value.items.every(item=>item.language===lang))return false;
+    }
+    return true;
+    }catch{return false;}
+  }
+  window.ResponseContracts={accepts,identityMatches};
+})();

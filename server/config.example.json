@@ -1,0 +1,58 @@
+{
+  "mode": "local",
+  "production_enabled": false,
+  "automatic_deletion_enabled": false,
+  "local_intake_enabled": false,
+  "origin": "http://127.0.0.1:8890",
+  "event_id": null,
+  "service_window_id": null,
+  "service_start_utc": null,
+  "service_end_utc": null,
+  "policy_version": null,
+  "terms_document_id": null,
+  "terms_version": null,
+  "retention_days": null,
+  "backup_retention_days": null,
+  "audit_retention_days": null,
+  "backup_interval_seconds": 86400,
+  "min_free_bytes": 268435456,
+  "db_warning_bytes": null,
+  "backup_warning_bytes": null,
+  "admin_session_seconds": 1800,
+  "visitor_session_seconds": 3600,
+  "production_readiness": {
+    "approved_terms": false,
+    "official_policy": false,
+    "storage_retention_and_roles": false,
+    "ap_adapter_compatible": false,
+    "absolute_expiry_supported": false,
+    "infrastructure_built": false,
+    "required_tests_completed": false
+  },
+  "https_transport": {
+    "enabled": false,
+    "portal_origin": null,
+    "admin_origin": null,
+    "trusted_proxy": null
+  },
+  "backup_format": "stream-v2",
+  "event_information": {
+    "name_ja": null,
+    "name_en": null,
+    "ssid": null,
+    "contact_ja": null,
+    "contact_en": null,
+    "period_confirmed": false
+  },
+  "workflow_policy": {
+    "approved": false,
+    "review_valid_seconds": 86400,
+    "cursor_valid_seconds": 900,
+    "export_row_limit": 100000,
+    "export_range_seconds": 2678400,
+    "owner_active_jobs": 1,
+    "heartbeat_seconds": 10,
+    "stale_after_seconds": 30,
+    "activation_grace_seconds": 60
+  }
+}

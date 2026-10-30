@@ -1,0 +1,9 @@
+{
+  "format": "festival-workflow-policy-approval-v1",
+  "plan_id": null,
+  "plan_sha256": null,
+  "decision_id": null,
+  "approved_by": null,
+  "decided_at_utc": null,
+  "confirmed": false
+}

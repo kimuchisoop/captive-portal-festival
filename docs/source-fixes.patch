@@ -1,0 +1,70 @@
+--- docs19/workflow_database.py
++++ 0.11.10-rc1/workflow_database.py
+@@ -4,7 +4,7 @@
+ from app import ROOT,uid
+ from database import load_settings,transaction,Connection,connect
+ from filesystem_guard import regular
+-from security import private_paths
++from preflight import private_paths
+ from workflow_common import canonical,sha,target_lock,private_dir,read_private
+ from workflow_generation import create_generation
+ from jobs import secure_new_file
+--- docs19/database.py
++++ 0.11.10-rc1/database.py
+@@ -78,7 +78,11 @@
+     raw = connect(c); db = Connection(raw)
+     try:
+         if db.execute('SHOW TABLES').fetchall(): raise ValueError('An EMPTY dedicated MySQL database is required')
+-        for statement in Path(schema_file).read_text(encoding='utf-8').split(';'):
++        # Schema comments can contain semicolons. Remove full-line comments
++        # before splitting these simple, repository-owned DDL statements.
++        schema = '\n'.join(line for line in Path(schema_file).read_text(encoding='utf-8').splitlines()
++                           if not line.lstrip().startswith('--'))
++        for statement in schema.split(';'):
+             if statement.strip(): db.execute(statement)
+         raw.commit()
+     finally: raw.close()
+--- docs19/mfa.py
++++ 0.11.10-rc1/mfa.py
+@@ -101,7 +101,7 @@
+         if not valid: raise ApiError('mfa_invalid',401,'認証コードを確認してください。期限切れの場合はログインし直してください。')
+         return cookie(jsonify(authenticated=True,csrf_token=s.csrf(raw),user={'username':a['username'],'role':a['role']}),raw,'admin')
+ 
+-    @app.get('/v1/admin/mfa-status')
++    @app.get('/v1/admin/mfa-status', endpoint='mfa_status')
+     def status():
+         session=s.get_session('admin')
+         if not session or session['kind']!='admin': raise ApiError('authentication_required',401)
+--- docs19/readiness.py
++++ 0.11.10-rc1/readiness.py
+@@ -40,7 +40,7 @@
+     backup_age=max(0,s.now()-int(backup[0])) if backup else None
+     known_codes={'backup_legacy_size','retention_paused','adapter_unavailable','retention_unconfigured','disk_low','database_size_high',
+                  'plan_review_pending','plan_review_required','plan_apply_unknown','plan_activation_pending','archive_export_failed','schema5_recovery_required','backup_size_high','backup_inventory_incomplete','capacity_thresholds_unconfigured','operation_failed','backup_overdue','database_structure','backup_failed'}
+-    return dict(format='festival-wifi-support-summary',format_version=1,release='0.11.9',checked_at_utc=utc(s.now()),
++    return dict(format='festival-wifi-support-summary',format_version=1,release='0.11.10-rc1',checked_at_utc=utc(s.now()),
+                 correlation_id=correlation_id,database_schema=5,mode='local',production_enabled=False,ap_adapter='disconnected',
+                 automatic_deletion_enabled=False,counts=counts,
+                 worker=dict(age_seconds=worker['age_seconds'],stale=worker['stale']),backup=dict(age_seconds=backup_age),
+--- docs19/workflow_diagnostics.py
++++ 0.11.10-rc1/workflow_diagnostics.py
+@@ -59,7 +59,7 @@
+                 except Exception:note('lineage_and_receipt','blocked_or_invalid',True)
+         except Exception:note('mysql_read_only_diagnosis','unavailable_or_invalid',True)
+     else:note('mysql_read_only_diagnosis','not_requested')
+-    return dict(format='festival-workflow-diagnosis-v1',release='0.11.9-candidate',checked_at=int(time.time()),
++    return dict(format='festival-workflow-diagnosis-v1',release='0.11.10-rc1',checked_at=int(time.time()),
+                 startup_eligibility='blocked' if blockers else 'checks_satisfied' if include_db else 'not_fully_checked',
+                 blockers=blockers,checks=checks,config_sha256=config_sha,database_requested=include_db,
+                 locks_checked=False,runtime_health_verified=False,network_verified=False,guards_released=False,home_files_written=False)
+--- docs19/workflow-api.json
++++ 0.11.10-rc1/workflow-api.json
+@@ -2,7 +2,7 @@
+   "openapi": "3.1.1",
+   "info": {
+     "title": "学校祭ゲストWi-Fi 管理機能追加仕様案",
+-    "version": "0.11.9-candidate",
++    "version": "0.11.10-rc1",
+     "description": "20操作のソース実装候補。DB形式5・31表。試験/SQL適用/公開未実施。workflow_policy.approved=falseでは期限・出力に関わる操作を503で拒否。"
+   },
+   "servers": [

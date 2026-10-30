@@ -1,0 +1,268 @@
+{
+  "/v1/public": {
+    "adapter": "disconnected",
+    "event_information": {
+      "contact_en": null,
+      "contact_ja": null,
+      "name_en": null,
+      "name_ja": null,
+      "period_confirmed": false,
+      "service_end_utc": null,
+      "service_start_utc": null,
+      "ssid": null
+    },
+    "mode": "local",
+    "production_enabled": false,
+    "service_state": "local_only",
+    "terms": {
+      "document_id": "c8b81dcd-b690-4bd8-a241-5cb807a71305",
+      "language": "ja",
+      "policy_version": "local-test-1",
+      "sha256": "d594a5323e9caef60494980dd31c885086a5e67295f8aa6f3a2f239acc3bf5d7",
+      "text": "学校祭ゲストWi-Fi 利用上の注意（仮・ローカル開発用）\n\n本サービスは来場者のインターネット接続を目的とした共用ネットワークです。\n通信速度や常時接続を保証するものではありません。混雑や設備の状況により、通信の制限や提供の中断・終了を行う場合があります。\n他の利用者や設備への妨害、不正アクセス、法令に反する利用を禁止します。\n端末の更新や安全対策は利用者自身で行い、機密情報や重要な個人情報の取り扱いに注意してください。\n同意の日時、規約の版、言語、接続を照合するための識別子を運営管理のために記録します。保存期間と問い合わせ窓口は本番公開前に正式に案内します。\n\nこの文面は承認前の仮文面です。本番では学校側が承認した利用条件・個人情報の案内へ差し替えてください。\n",
+      "version": "local-draft-1"
+    }
+  },
+  "/v1/session": {
+    "authenticated": false,
+    "csrf_token": "6862c706d815ff8177f55ef32105ca355fc51a7577bf770501e1fae23196c341"
+  },
+  "/v1/contexts": {
+    "context_id": "6f300582-bb42-4632-8b1f-b4396254d49f",
+    "mode": "local"
+  },
+  "/v1/contexts/6f300582-bb42-4632-8b1f-b4396254d49f": {
+    "context_id": "6f300582-bb42-4632-8b1f-b4396254d49f",
+    "expires_at_utc": "2026-10-30T05:03:08Z",
+    "mode": "local",
+    "terms": {
+      "document_id": "c8b81dcd-b690-4bd8-a241-5cb807a71305",
+      "language": "en",
+      "policy_version": "local-test-1",
+      "sha256": "cb18c5fe6ef2e9f6b3186fe433768f6027d1c69645d6250cf4257e7807cb8248",
+      "text": "School Festival Guest Wi-Fi — provisional local development terms\n\nThis shared network is intended for visitors' Internet access. Speed and continuous availability are not guaranteed. Service may be limited, interrupted or ended due to congestion or equipment conditions.\nDo not disrupt other users or equipment, access systems without authorization, or use the service unlawfully. Keep your device up to date and take care when handling sensitive information.\nThe service records the consent time, terms version, language and a connection reference for operation. The official retention period and contact point must be announced before production use.\n\nThese provisional terms require approval by the school before publication.\n",
+      "version": "local-draft-1"
+    }
+  },
+  "/v1/consents": {
+    "adapter": "disconnected",
+    "authorization_status": "pending",
+    "consent_id": "f07d293f-7892-4829-bd53-cdbfd543ea70",
+    "display_state": "waiting_auth",
+    "grant_id": "6a5cba24-f422-482d-9d77-111beb48821b",
+    "network_verified": false,
+    "observation_state": "unknown",
+    "operation_id": "d5f31e08-86bd-4e61-be26-0af49f6f3b65",
+    "original_expires_at_utc": null,
+    "revocation_state": "none"
+  },
+  "/v1/admin/overview": {
+    "adapter": "disconnected",
+    "automatic_deletion_enabled": false,
+    "backup_retention_days": 7,
+    "counts": {
+      "consents": 1,
+      "grants": 1,
+      "unconfirmed": 1
+    },
+    "last_backup_at_utc": null,
+    "last_job_at_utc": null,
+    "mode": "local",
+    "production_enabled": false,
+    "retention_days": 7,
+    "server_now_utc": "2026-10-30T04:58:12Z",
+    "service_state": "local_only",
+    "session_expires_at_utc": "2026-10-30T05:28:12Z",
+    "user": {
+      "enabled": 1,
+      "id": "3da62334-9d9e-4eb4-b8de-9b1a95d7d981",
+      "role": "settings",
+      "username": "qaadmin"
+    },
+    "worker_stale": true
+  },
+  "/v1/admin/storage": {
+    "application_disk_free_bytes": 286155694080,
+    "application_disk_total_bytes": 510510755840,
+    "automatic_deletion_enabled": false,
+    "backup_bytes": 0,
+    "backup_bytes_complete": true,
+    "backup_completed_bytes": 0,
+    "backup_files": 0,
+    "backup_other_regular_bytes": 0,
+    "backup_other_regular_files": 0,
+    "backup_partial_bytes": 0,
+    "backup_partial_files": 0,
+    "backup_unreadable_entries": 0,
+    "backup_warning": false,
+    "backup_warning_bytes": null,
+    "backup_warning_unknown": false,
+    "checked_at_utc": "2026-10-30T04:58:12Z",
+    "database_allocated_bytes": 1179648,
+    "database_disk_free_bytes": null,
+    "database_size_is_estimate": true,
+    "database_warning": false,
+    "db_warning_bytes": null,
+    "tables": [
+      {
+        "allocated_bytes": 32768,
+        "estimated_rows": 1,
+        "name": "admins"
+      },
+      {
+        "allocated_bytes": 16384,
+        "estimated_rows": 4,
+        "name": "audit"
+      },
+      {
+        "allocated_bytes": 49152,
+        "estimated_rows": 0,
+        "name": "backup_checks"
+      },
+      {
+        "allocated_bytes": 81920,
+        "estimated_rows": 0,
+        "name": "checklist_entries"
+      },
+      {
+        "allocated_bytes": 32768,
+        "estimated_rows": 0,
+        "name": "checklist_runs"
+      },
+      {
+        "allocated_bytes": 49152,
+        "estimated_rows": 0,
+        "name": "consent_archive_events"
+      },
+      {
+        "allocated_bytes": 81920,
+        "estimated_rows": 0,
+        "name": "consent_archive_exports"
+      },
+      {
+        "allocated_bytes": 49152,
+        "estimated_rows": 0,
+        "name": "consent_archive_items"
+      },
+      {
+        "allocated_bytes": 32768,
+        "estimated_rows": 0,
+        "name": "consent_archive_snapshots"
+      },
+      {
+        "allocated_bytes": 32768,
+        "estimated_rows": 1,
+        "name": "consents"
+      },
+      {
+        "allocated_bytes": 16384,
+        "estimated_rows": 1,
+        "name": "contexts"
+      },
+      {
+        "allocated_bytes": 49152,
+        "estimated_rows": 0,
+        "name": "event_info_apply_attempts"
+      },
+      {
+        "allocated_bytes": 32768,
+        "estimated_rows": 0,
+        "name": "event_info_apply_observations"
+      },
+      {
+        "allocated_bytes": 65536,
+        "estimated_rows": 0,
+        "name": "event_info_plan_events"
+      },
+      {
+        "allocated_bytes": 81920,
+        "estimated_rows": 0,
+        "name": "event_info_plans"
+      },
+      {
+        "allocated_bytes": 49152,
+        "estimated_rows": 1,
+        "name": "grants"
+      },
+      {
+        "allocated_bytes": 16384,
+        "estimated_rows": 2,
+        "name": "idempotency"
+      },
+      {
+        "allocated_bytes": 16384,
+        "estimated_rows": 1,
+        "name": "launches"
+      },
+      {
+        "allocated_bytes": 16384,
+        "estimated_rows": 0,
+        "name": "login_limits"
+      },
+      {
+        "allocated_bytes": 16384,
+        "estimated_rows": 7,
+        "name": "meta"
+      },
+      {
+        "allocated_bytes": 16384,
+        "estimated_rows": 0,
+        "name": "mfa_recovery"
+      },
+      {
+        "allocated_bytes": 16384,
+        "estimated_rows": 0,
+        "name": "mfa_settings"
+      },
+      {
+        "allocated_bytes": 81920,
+        "estimated_rows": 0,
+        "name": "notification_updates"
+      },
+      {
+        "allocated_bytes": 32768,
+        "estimated_rows": 0,
+        "name": "notifications"
+      },
+      {
+        "allocated_bytes": 49152,
+        "estimated_rows": 1,
+        "name": "operations"
+      },
+      {
+        "allocated_bytes": 16384,
+        "estimated_rows": 2,
+        "name": "sessions"
+      },
+      {
+        "allocated_bytes": 16384,
+        "estimated_rows": 0,
+        "name": "storage_samples"
+      },
+      {
+        "allocated_bytes": 32768,
+        "estimated_rows": 0,
+        "name": "support_exports"
+      },
+      {
+        "allocated_bytes": 16384,
+        "estimated_rows": 2,
+        "name": "terms_documents"
+      },
+      {
+        "allocated_bytes": 49152,
+        "estimated_rows": 0,
+        "name": "terms_publications"
+      },
+      {
+        "allocated_bytes": 32768,
+        "estimated_rows": 0,
+        "name": "terms_revisions"
+      }
+    ],
+    "thresholds_configured": false
+  },
+  "/v1/admin/notifications": {
+    "items": []
+  }
+}

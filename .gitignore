@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+build/
+dist/
+data/
+runtime/
+backups/
+*.log
+*.key
+credentials.json
+mysql.json
+maintenance*.json
+config.json
+*.partial

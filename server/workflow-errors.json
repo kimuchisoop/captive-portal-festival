@@ -1,0 +1,349 @@
+{
+  "document_revision": "docs8",
+  "envelope": [
+    "code",
+    "message",
+    "retryable",
+    "correlation_id"
+  ],
+  "note": "Source implementation candidate; unique codes; no runtime verification. docs7 duplicate generation-required entry consolidated.",
+  "errors": [
+    {
+      "code": "invalid_fields",
+      "status": 400,
+      "message": "入力項目を確認してください。",
+      "next_action": "定義どおりのキー/型へ修正",
+      "retryable": false
+    },
+    {
+      "code": "authentication_required",
+      "status": 401,
+      "message": "ログインの有効期限が切れました。もう一度ログインしてください。",
+      "next_action": "保護表示を消去し再ログイン、一覧で結果確認",
+      "retryable": false
+    },
+    {
+      "code": "csrf_invalid",
+      "status": 403,
+      "message": "画面の認証情報を更新してください。",
+      "next_action": "画面を開き直して内容確認",
+      "retryable": false
+    },
+    {
+      "code": "permission_denied",
+      "status": 403,
+      "message": "この操作を行う権限がありません。",
+      "next_action": "担当者へ引継ぎ。自動再送しない",
+      "retryable": false
+    },
+    {
+      "code": "self_review_forbidden",
+      "status": 403,
+      "message": "自分が作成した案は確認できません。別の確認担当へ依頼してください。",
+      "next_action": "作成者と別のsettings担当",
+      "retryable": false
+    },
+    {
+      "code": "event_information_invalid",
+      "status": 409,
+      "message": "案内の入力・日時・設定の更新状態を確認してください。",
+      "next_action": "既存POST互換。初回入力/元configを確認",
+      "retryable": false
+    },
+    {
+      "code": "version_conflict",
+      "status": 409,
+      "message": "変更案が更新されています。現在の内容を確認してください。",
+      "next_action": "GETで現在版取得。自動上書きしない",
+      "retryable": false
+    },
+    {
+      "code": "config_changed",
+      "status": 409,
+      "message": "元の設定が変わりました。新しい設定から案を作成してください。",
+      "next_action": "旧案を保管し新案へ",
+      "retryable": false
+    },
+    {
+      "code": "invalid_state",
+      "status": 409,
+      "message": "現在の状態ではこの操作を行えません。",
+      "next_action": "状態再取得後に操作選択",
+      "retryable": false
+    },
+    {
+      "code": "idempotency_key_required",
+      "status": 400,
+      "message": "操作を識別する情報を確認できません。画面を開き直してください。",
+      "next_action": "手入力でUUIDを使い回さない",
+      "retryable": false
+    },
+    {
+      "code": "idempotency_conflict",
+      "status": 409,
+      "message": "同じ操作番号に異なる内容が指定されています。",
+      "next_action": "元の要求を照合。変更入力なら別の論理操作",
+      "retryable": false
+    },
+    {
+      "code": "idempotency_expired",
+      "status": 409,
+      "message": "操作の再送期限を過ぎています。保存結果を一覧で確認してください。",
+      "next_action": "結果確認前に新規POSTしない",
+      "retryable": false
+    },
+    {
+      "code": "cursor_invalid",
+      "status": 400,
+      "message": "続きの取得情報を確認できません。一覧を開き直してください。",
+      "next_action": "カーソルを編集しない",
+      "retryable": false
+    },
+    {
+      "code": "cursor_expired",
+      "status": 409,
+      "message": "続きの取得期限が切れました。先頭から読み直してください。",
+      "next_action": "CSVは同じ固定対象の先頭カーソル再取得",
+      "retryable": false
+    },
+    {
+      "code": "export_already_running",
+      "status": 409,
+      "message": "未完了の出力準備があります。本人の出力一覧を確認してください。",
+      "next_action": "既存依頼へ。別キーで連打しない",
+      "retryable": false
+    },
+    {
+      "code": "export_not_ready",
+      "status": 409,
+      "message": "この出力はまだ取得できません。準備状況を確認してください。",
+      "next_action": "GETで進捗。失敗なら明示再依頼",
+      "retryable": false
+    },
+    {
+      "code": "retry_source_invalid",
+      "status": 409,
+      "message": "再依頼元の状態または条件を確認してください。",
+      "next_action": "本人のfailedと同じ条件を選ぶ",
+      "retryable": false
+    },
+    {
+      "code": "plan_file_changed",
+      "status": 409,
+      "message": "変更案の原本が一致しません。設定担当へ連絡してください。",
+      "next_action": "原本保全、確認/適用を停止",
+      "retryable": false
+    },
+    {
+      "code": "plan_file_unavailable",
+      "status": 503,
+      "message": "変更案の原本を読み込めません。設定担当へ連絡してください。",
+      "next_action": "0件/空欄にしない。状態を再取得",
+      "retryable": true
+    },
+    {
+      "code": "import_report_not_found",
+      "status": 404,
+      "message": "取り込み準備資料を確認できません。",
+      "next_action": "OS担当へID/ハッシュ照合依頼",
+      "retryable": false
+    },
+    {
+      "code": "import_report_changed",
+      "status": 409,
+      "message": "取り込み準備資料が一致しません。作り直しが必要です。",
+      "next_action": "旧資料を残し新しい準備",
+      "retryable": false
+    },
+    {
+      "code": "import_source_changed",
+      "status": 409,
+      "message": "取り込み元の案が変わりました。原本を確認してください。",
+      "next_action": "元案と資料を保全し再準備",
+      "retryable": false
+    },
+    {
+      "code": "import_already_registered",
+      "status": 409,
+      "message": "この原本は取り込み済みです。変更案一覧を確認してください。",
+      "next_action": "既存案を参照。新案を乱造しない",
+      "retryable": false
+    },
+    {
+      "code": "notification_generation_required",
+      "status": 409,
+      "message": "通知一覧を更新してから、もう一度確認してください。",
+      "next_action": "新画面へ再読込。自動で確認操作を再送しない",
+      "retryable": false
+    },
+    {
+      "code": "notification_changed",
+      "status": 409,
+      "message": "通知が再発または解消しています。最新の内容を確認してください。",
+      "next_action": "現在世代を再取得し本人が判断",
+      "retryable": false
+    },
+    {
+      "code": "recovery_required",
+      "status": 503,
+      "message": "復旧後の確認が必要です。サーバー担当へ連絡してください。",
+      "next_action": "通常操作で解除しない",
+      "retryable": true
+    },
+    {
+      "code": "database_unavailable",
+      "status": 503,
+      "message": "記録を確認できません。時間をおいて状態を確認してください。",
+      "next_action": "結果不明を成功/失敗と断定しない",
+      "retryable": true
+    },
+    {
+      "code": "storage_unavailable",
+      "status": 503,
+      "message": "保存先を利用できません。運営担当へ連絡してください。",
+      "next_action": "記録を削除して空きを作らない",
+      "retryable": true
+    },
+    {
+      "code": "lock_unavailable",
+      "status": 503,
+      "message": "別の処理が実行中です。状態を確認してから再操作してください。",
+      "next_action": "POSTなら元キーで再送",
+      "retryable": true
+    },
+    {
+      "code": "internal_error",
+      "status": 500,
+      "message": "処理できませんでした。運営者に確認してください。",
+      "next_action": "correlation_idを伝える。機微情報を貼らない",
+      "retryable": false
+    },
+    {
+      "code": "plan_target_mismatch",
+      "status": 409,
+      "message": "保存先が異なります。現在の設定から新しい案を作成してください。",
+      "next_action": "旧案は保持し、現在homeの新案として保存・再確認",
+      "retryable": false
+    },
+    {
+      "code": "notification_generation_conflict",
+      "status": 409,
+      "message": "通知が再発しています。一覧を更新して内容を確認してください。",
+      "next_action": "新しい世代を本人が読んでから新キーで確認",
+      "retryable": false
+    },
+    {
+      "code": "notification_resolved",
+      "status": 409,
+      "message": "この通知は解消済みです。一覧を更新してください。",
+      "next_action": "確認済みにせず一覧更新",
+      "retryable": false
+    },
+    {
+      "code": "notification_state_conflict",
+      "status": 409,
+      "message": "通知の状態を確認できません。一覧を更新してください。",
+      "next_action": "一覧更新。状態不明を確認成功にしない",
+      "retryable": false
+    },
+    {
+      "code": "plan_not_found",
+      "status": 404,
+      "message": "変更案が見つかりません。",
+      "next_action": "一覧を更新",
+      "retryable": false
+    },
+    {
+      "code": "attempt_not_found",
+      "status": 404,
+      "message": "適用の記録が見つかりません。",
+      "next_action": "変更案から履歴を再取得",
+      "retryable": false
+    },
+    {
+      "code": "export_not_found",
+      "status": 404,
+      "message": "自分の出力依頼が見つかりません。",
+      "next_action": "自分の一覧を更新",
+      "retryable": false
+    },
+    {
+      "code": "content_changed",
+      "status": 409,
+      "message": "確認対象の内容が一致しません。現在の案を読み直してください。",
+      "next_action": "現在の版と内容を再確認",
+      "retryable": false
+    },
+    {
+      "code": "review_required",
+      "status": 409,
+      "message": "有効な別担当の確認が必要です。",
+      "next_action": "変更案を再確認",
+      "retryable": false
+    },
+    {
+      "code": "apply_reconciliation_required",
+      "status": 409,
+      "message": "先の適用結果の照合が必要です。サーバー担当へ連絡してください。",
+      "next_action": "停止中の照合CLI",
+      "retryable": false
+    },
+    {
+      "code": "archive_range_invalid",
+      "status": 400,
+      "message": "検索日時の順序または承認済みの期間上限を確認してください。",
+      "next_action": "期間を短くして再検索",
+      "retryable": false
+    },
+    {
+      "code": "query_invalid",
+      "status": 400,
+      "message": "検索項目・カーソル・件数を確認してください。",
+      "next_action": "検索条件を修正",
+      "retryable": false
+    },
+    {
+      "code": "snapshot_integrity_error",
+      "status": 503,
+      "message": "出力コピーの整合性を確認できません。サーバー担当へ連絡してください。",
+      "next_action": "原本を保持して照合",
+      "retryable": true
+    },
+    {
+      "code": "workflow_policy_unconfigured",
+      "status": 503,
+      "message": "確認期限・出力条件は未承認です。設定担当へ確認してください。",
+      "next_action": "未決定値を承認後に設定",
+      "retryable": true
+    },
+    {
+      "code": "schema5_recovery_required",
+      "status": 503,
+      "message": "復旧後の確認が必要です。サーバー担当へ連絡してください。",
+      "next_action": "停止中の復旧レポートを確認",
+      "retryable": true
+    }
+  ],
+  "job_errors": [
+    {
+      "code": "row_limit_exceeded",
+      "message": "対象件数が上限を超えました。期間を分けて依頼してください。"
+    },
+    {
+      "code": "source_read_interrupted",
+      "message": "対象の読み取りを完了できませんでした。途中の記録は保持しています。"
+    },
+    {
+      "code": "storage_unavailable",
+      "message": "保存領域を利用できず準備を完了できませんでした。"
+    },
+    {
+      "code": "preparation_interrupted",
+      "message": "準備が中断しました。旧記録を残して再依頼できます。"
+    },
+    {
+      "code": "snapshot_integrity_error",
+      "message": "確定対象の照合が一致しません。記録管理担当へ連絡してください。"
+    }
+  ]
+}

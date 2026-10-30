@@ -1,0 +1,490 @@
+{
+  "schema_version_candidate": 5,
+  "scope": "dedicated database only",
+  "profiles": [
+    "service_runtime_including_existing_operator_cli",
+    "schema_maintenance_and_empty_target_restore"
+  ],
+  "runtime": [
+    {
+      "table": "meta",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "value"
+      ],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "jobs.py:17",
+        "jobs.py:214",
+        "migrations.py:26",
+        "migrations.py:59",
+        "stream_backup.py:114",
+        "usage_summary.py:15",
+        "usage_summary.py:41"
+      ]
+    },
+    {
+      "table": "terms_documents",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "app.py:83",
+        "operator_features.py:139"
+      ]
+    },
+    {
+      "table": "admins",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "role",
+        "enabled",
+        "password_hash"
+      ],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "manage.py:75",
+        "manage.py:89",
+        "manage.py:91",
+        "manage.py:93"
+      ]
+    },
+    {
+      "table": "sessions",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "expires_at"
+      ],
+      "delete": true,
+      "delete_reason": "明示ログアウト・MFA/管理者変更時の認証失効",
+      "basis": [
+        "app.py:169",
+        "app.py:401",
+        "app.py:406",
+        "app.py:428",
+        "manage.py:94",
+        "mfa.py:39",
+        "mfa.py:48",
+        "mfa.py:90"
+      ]
+    },
+    {
+      "table": "login_limits",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "count",
+        "expires_at"
+      ],
+      "delete": true,
+      "delete_reason": "認証成功または期限超過の試行制限カウンター初期化",
+      "basis": [
+        "app.py:391",
+        "app.py:408",
+        "app.py:411",
+        "mfa.py:92",
+        "mfa.py:96",
+        "mfa.py:98"
+      ]
+    },
+    {
+      "table": "launches",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "owner_id",
+        "context_id"
+      ],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "app.py:452",
+        "manage.py:102"
+      ]
+    },
+    {
+      "table": "contexts",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "app.py:451"
+      ]
+    },
+    {
+      "table": "consents",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "app.py:498"
+      ]
+    },
+    {
+      "table": "grants",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "authorization_status",
+        "revocation_state",
+        "revoked_at",
+        "row_version"
+      ],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "app.py:502",
+        "app.py:582",
+        "jobs.py:220",
+        "jobs.py:38",
+        "jobs.py:47",
+        "stream_backup.py:123"
+      ]
+    },
+    {
+      "table": "operations",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "status",
+        "attempts",
+        "last_error_code"
+      ],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "app.py:218",
+        "jobs.py:221",
+        "jobs.py:40",
+        "jobs.py:45",
+        "stream_backup.py:124"
+      ]
+    },
+    {
+      "table": "idempotency",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "app.py:212"
+      ]
+    },
+    {
+      "table": "audit",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "app.py:157"
+      ]
+    },
+    {
+      "table": "notifications",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "state",
+        "first_seen",
+        "last_seen",
+        "generation",
+        "acknowledged_by",
+        "acknowledged_at"
+      ],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "app.py:613",
+        "jobs.py:23",
+        "jobs.py:25",
+        "jobs.py:27",
+        "jobs.py:29"
+      ]
+    },
+    {
+      "table": "notification_updates",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "operator_features.py:84"
+      ]
+    },
+    {
+      "table": "terms_revisions",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "operator_features.py:118"
+      ]
+    },
+    {
+      "table": "terms_publications",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "operator_features.py:141"
+      ]
+    },
+    {
+      "table": "mfa_settings",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "secret_ciphertext",
+        "generation",
+        "enabled",
+        "needs_reset",
+        "last_counter"
+      ],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "jobs.py:225",
+        "mfa.py:36",
+        "mfa.py:47",
+        "mfa.py:67",
+        "stream_backup.py:125"
+      ]
+    },
+    {
+      "table": "mfa_recovery",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "used_at"
+      ],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "mfa.py:38",
+        "mfa.py:57"
+      ]
+    },
+    {
+      "table": "storage_samples",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "operator_features.py:15"
+      ]
+    },
+    {
+      "table": "backup_checks",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "backup_review.py:51"
+      ]
+    },
+    {
+      "table": "support_exports",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "readiness.py:107"
+      ]
+    },
+    {
+      "table": "checklist_runs",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "readiness.py:178"
+      ]
+    },
+    {
+      "table": "checklist_entries",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "readiness.py:202"
+      ]
+    },
+    {
+      "table": "event_info_plans",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "docs4: proposed repository/worker operation"
+      ]
+    },
+    {
+      "table": "event_info_plan_events",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "docs4: proposed repository/worker operation"
+      ]
+    },
+    {
+      "table": "event_info_apply_attempts",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "docs4: proposed repository/worker operation"
+      ]
+    },
+    {
+      "table": "event_info_apply_observations",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "docs4: proposed repository/worker operation"
+      ]
+    },
+    {
+      "table": "consent_archive_exports",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "state",
+        "row_version",
+        "error_code"
+      ],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "docs4: proposed repository/worker operation"
+      ]
+    },
+    {
+      "table": "consent_archive_snapshots",
+      "select": true,
+      "insert": true,
+      "update_columns": [
+        "prepared_at",
+        "state",
+        "item_count",
+        "rows_sha256",
+        "error_code"
+      ],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "docs4: proposed repository/worker operation"
+      ]
+    },
+    {
+      "table": "consent_archive_items",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "docs4: proposed repository/worker operation"
+      ]
+    },
+    {
+      "table": "consent_archive_events",
+      "select": true,
+      "insert": true,
+      "update_columns": [],
+      "delete": false,
+      "delete_reason": null,
+      "basis": [
+        "docs4: proposed repository/worker operation"
+      ]
+    }
+  ],
+  "sql_executed": false,
+  "document_revision": "docs7",
+  "maintenance_basic_scope": {
+    "qualification": "explicit_db_table_only",
+    "tables": [
+      "meta",
+      "terms_documents",
+      "admins",
+      "sessions",
+      "login_limits",
+      "launches",
+      "contexts",
+      "consents",
+      "grants",
+      "operations",
+      "idempotency",
+      "audit",
+      "notifications",
+      "notification_updates",
+      "terms_revisions",
+      "terms_publications",
+      "mfa_settings",
+      "mfa_recovery",
+      "storage_samples",
+      "backup_checks",
+      "support_exports",
+      "checklist_runs",
+      "checklist_entries",
+      "event_info_plans",
+      "event_info_plan_events",
+      "event_info_apply_attempts",
+      "event_info_apply_observations",
+      "consent_archive_exports",
+      "consent_archive_snapshots",
+      "consent_archive_items",
+      "consent_archive_events"
+    ],
+    "privileges": [
+      "SELECT",
+      "INSERT",
+      "CREATE",
+      "ALTER",
+      "INDEX",
+      "TRIGGER",
+      "REFERENCES"
+    ],
+    "database_wildcard_grants": false,
+    "existing_broad_grants_revoked": false
+  },
+  "schema5_diagnostic_status": "required_in_T01_T10_not_implemented"
+}

@@ -1,0 +1,7 @@
+School Festival Guest Wi-Fi — provisional local development terms
+
+This shared network is intended for visitors' Internet access. Speed and continuous availability are not guaranteed. Service may be limited, interrupted or ended due to congestion or equipment conditions.
+Do not disrupt other users or equipment, access systems without authorization, or use the service unlawfully. Keep your device up to date and take care when handling sensitive information.
+The service records the consent time, terms version, language and a connection reference for operation. The official retention period and contact point must be announced before production use.
+
+These provisional terms require approval by the school before publication.

@@ -1,0 +1,58 @@
+# INCOMPLETE TEMPLATE: fill the offline JSON and use prepare-https to generate a config.
+# OFFLINE PREPARATION ONLY: no application traffic is forwarded.
+# Dedicated Linux nginx http-context snippet. Not installed by this tool.
+# Certificate paths are operator-supplied references; no key material is copied.
+map $uri $festival_route {
+    default other;
+    / portal;
+    /admin admin;
+    ~^/v1/admin/ admin_api;
+    ~^/v1/ visitor_api;
+    ~^/static/ static;
+}
+log_format festival_safe '$time_iso8601 status=$status method=$request_method route=$festival_route request_id=$request_id';
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __PORTAL_HOSTNAME__;
+    access_log /var/log/nginx/festival-portal-access.log festival_safe;
+    return 308 https://__PORTAL_HOSTNAME__$request_uri;
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name __ADMIN_HOSTNAME__;
+    access_log /var/log/nginx/festival-admin-access.log festival_safe;
+    return 308 https://__ADMIN_HOSTNAME__$request_uri;
+}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name __PORTAL_HOSTNAME__;
+    access_log /var/log/nginx/festival-portal-access.log festival_safe;
+    ssl_certificate /CHANGE_ME/portal-chain.pem;
+    ssl_certificate_key /CHANGE_ME/portal-key.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    client_max_body_size 64k;
+    add_header Cache-Control "no-store" always;
+    location = /admin { return 404; }
+    location ^~ /admin/ { return 404; }
+    location ^~ /v1/admin/ { return 404; }
+    location / { return 503; }
+}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name __ADMIN_HOSTNAME__;
+    access_log /var/log/nginx/festival-admin-access.log festival_safe;
+    ssl_certificate /CHANGE_ME/admin-chain.pem;
+    ssl_certificate_key /CHANGE_ME/admin-key.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    allow __MANAGEMENT_CIDR__;
+    deny all;
+    add_header Cache-Control "no-store" always;
+    # Create this as a NEW EMPTY directory during reviewed installation.
+    # Access rules run before the content handler. A rewrite-phase return would bypass them.
+    root /var/empty/festival-wifi-disabled;
+    location / { try_files /__festival_wifi_maintenance_only__ =503; }
+}

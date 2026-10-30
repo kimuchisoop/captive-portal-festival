@@ -1,0 +1,10 @@
+{
+  "deployment_os": null,
+  "portal_hostname": null,
+  "admin_hostname": null,
+  "portal_certificate": null,
+  "portal_private_key": null,
+  "admin_certificate": null,
+  "admin_private_key": null,
+  "management_networks": []
+}

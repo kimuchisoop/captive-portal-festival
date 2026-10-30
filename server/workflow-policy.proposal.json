@@ -1,0 +1,11 @@
+{
+  "approved": false,
+  "review_valid_seconds": 86400,
+  "cursor_valid_seconds": 900,
+  "export_row_limit": 100000,
+  "export_range_seconds": 2678400,
+  "owner_active_jobs": 1,
+  "heartbeat_seconds": 10,
+  "stale_after_seconds": 30,
+  "activation_grace_seconds": 60
+}

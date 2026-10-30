@@ -1,0 +1,5396 @@
+{
+  "source_release": "0.11.9-candidate",
+  "scope": "required browser fields, not exhaustive server response schemas",
+  "operations": {
+    "GET /v1/public": {
+      "type": "object",
+      "required": [
+        "mode",
+        "production_enabled",
+        "service_state",
+        "adapter",
+        "terms",
+        "event_information"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "production_enabled": {
+          "type": "boolean"
+        },
+        "service_state": {
+          "type": "string"
+        },
+        "adapter": {
+          "type": "string"
+        },
+        "terms": {
+          "type": "object",
+          "required": [
+            "document_id",
+            "version",
+            "policy_version",
+            "language",
+            "text",
+            "sha256"
+          ],
+          "properties": {
+            "document_id": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "policy_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "language": {
+              "type": "string",
+              "enum": [
+                "ja",
+                "en"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": true
+        },
+        "event_information": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/session": {
+      "type": "object",
+      "required": [
+        "csrf_token",
+        "authenticated"
+      ],
+      "properties": {
+        "csrf_token": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authenticated": {
+          "type": "boolean"
+        },
+        "mfa_required": {
+          "type": "boolean"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "username",
+                "role"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                },
+                "username": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "viewer",
+                    "operator",
+                    "records",
+                    "settings"
+                  ]
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "authenticated": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "user"
+            ],
+            "properties": {
+              "user": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "username",
+                  "role"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "viewer",
+                      "operator",
+                      "records",
+                      "settings"
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "GET /v1/admin/session": {
+      "type": "object",
+      "required": [
+        "csrf_token",
+        "authenticated"
+      ],
+      "properties": {
+        "csrf_token": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authenticated": {
+          "type": "boolean"
+        },
+        "mfa_required": {
+          "type": "boolean"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "username",
+                "role"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                },
+                "username": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "viewer",
+                    "operator",
+                    "records",
+                    "settings"
+                  ]
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "authenticated": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "user"
+            ],
+            "properties": {
+              "user": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "username",
+                  "role"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "viewer",
+                      "operator",
+                      "records",
+                      "settings"
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "POST /v1/admin/session": {
+      "type": "object",
+      "required": [
+        "csrf_token",
+        "authenticated"
+      ],
+      "properties": {
+        "csrf_token": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authenticated": {
+          "type": "boolean"
+        },
+        "mfa_required": {
+          "type": "boolean"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "username",
+                "role"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                },
+                "username": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "viewer",
+                    "operator",
+                    "records",
+                    "settings"
+                  ]
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "authenticated": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "user"
+            ],
+            "properties": {
+              "user": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "username",
+                  "role"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "viewer",
+                      "operator",
+                      "records",
+                      "settings"
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "POST /v1/admin/login": {
+      "type": "object",
+      "required": [
+        "csrf_token",
+        "authenticated",
+        "user",
+        "mfa_required"
+      ],
+      "properties": {
+        "csrf_token": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authenticated": {
+          "type": "boolean"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "username",
+                "role"
+              ],
+              "properties": {
+                "username": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "viewer",
+                    "operator",
+                    "records",
+                    "settings"
+                  ]
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mfa_required": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "authenticated": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "user": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "role"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "viewer",
+                      "operator",
+                      "records",
+                      "settings"
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              },
+              "mfa_required": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "authenticated": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "user": {
+                "type": "null"
+              },
+              "mfa_required": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "POST /v1/admin/mfa": {
+      "type": "object",
+      "required": [
+        "csrf_token",
+        "authenticated",
+        "user"
+      ],
+      "properties": {
+        "csrf_token": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authenticated": {
+          "const": true
+        },
+        "user": {
+          "type": "object",
+          "required": [
+            "username",
+            "role"
+          ],
+          "properties": {
+            "username": {
+              "type": "string"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "viewer",
+                "operator",
+                "records",
+                "settings"
+              ]
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/logout": {
+      "type": "object",
+      "required": [
+        "ok"
+      ],
+      "properties": {
+        "ok": {
+          "const": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/contexts": {
+      "type": "object",
+      "required": [
+        "context_id",
+        "mode"
+      ],
+      "properties": {
+        "context_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "mode": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/contexts/<context_id>": {
+      "type": "object",
+      "required": [
+        "context_id",
+        "mode",
+        "expires_at_utc",
+        "terms"
+      ],
+      "properties": {
+        "context_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "expires_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "terms": {
+          "type": "object",
+          "required": [
+            "document_id",
+            "version",
+            "policy_version",
+            "language",
+            "text",
+            "sha256"
+          ],
+          "properties": {
+            "document_id": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "policy_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "language": {
+              "type": "string",
+              "enum": [
+                "ja",
+                "en"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/consents": {
+      "type": "object",
+      "required": [
+        "grant_id",
+        "consent_id",
+        "authorization_status",
+        "observation_state",
+        "revocation_state",
+        "display_state",
+        "original_expires_at_utc",
+        "network_verified",
+        "adapter"
+      ],
+      "properties": {
+        "grant_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "consent_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "authorization_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "accepted",
+            "rejected",
+            "expired",
+            "revoked"
+          ]
+        },
+        "observation_state": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "active",
+            "inactive",
+            "stale"
+          ]
+        },
+        "revocation_state": {
+          "type": "string",
+          "enum": [
+            "none",
+            "queued",
+            "acknowledged",
+            "confirmed",
+            "failed"
+          ]
+        },
+        "display_state": {
+          "type": "string"
+        },
+        "original_expires_at_utc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "network_verified": {
+          "type": "boolean"
+        },
+        "adapter": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/grants/<grant_id>": {
+      "type": "object",
+      "required": [
+        "grant_id",
+        "consent_id",
+        "authorization_status",
+        "observation_state",
+        "revocation_state",
+        "display_state",
+        "original_expires_at_utc",
+        "network_verified",
+        "adapter"
+      ],
+      "properties": {
+        "grant_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "consent_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "authorization_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "accepted",
+            "rejected",
+            "expired",
+            "revoked"
+          ]
+        },
+        "observation_state": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "active",
+            "inactive",
+            "stale"
+          ]
+        },
+        "revocation_state": {
+          "type": "string",
+          "enum": [
+            "none",
+            "queued",
+            "acknowledged",
+            "confirmed",
+            "failed"
+          ]
+        },
+        "display_state": {
+          "type": "string"
+        },
+        "original_expires_at_utc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "network_verified": {
+          "type": "boolean"
+        },
+        "adapter": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/grants/<grant_id>/handoffs": null,
+    "GET /v1/admin/overview": {
+      "type": "object",
+      "required": [
+        "mode",
+        "production_enabled",
+        "adapter",
+        "user",
+        "counts",
+        "server_now_utc",
+        "session_expires_at_utc",
+        "service_state",
+        "last_job_at_utc",
+        "worker_stale",
+        "last_backup_at_utc",
+        "automatic_deletion_enabled",
+        "retention_days",
+        "backup_retention_days"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "production_enabled": {
+          "type": "boolean"
+        },
+        "adapter": {
+          "type": "string"
+        },
+        "user": {
+          "type": "object",
+          "required": [
+            "id",
+            "username",
+            "role"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "username": {
+              "type": "string"
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "viewer",
+                "operator",
+                "records",
+                "settings"
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "counts": {
+          "type": "object",
+          "required": [
+            "consents",
+            "grants",
+            "unconfirmed"
+          ],
+          "properties": {
+            "consents": {
+              "type": "integer"
+            },
+            "grants": {
+              "type": "integer"
+            },
+            "unconfirmed": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": true
+        },
+        "server_now_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "session_expires_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "service_state": {
+          "type": "string"
+        },
+        "last_job_at_utc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "worker_stale": {
+          "type": "boolean"
+        },
+        "last_backup_at_utc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "automatic_deletion_enabled": {
+          "type": "boolean"
+        },
+        "retention_days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "backup_retention_days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/session-status": {
+      "type": "object",
+      "required": [
+        "server_now_utc",
+        "expires_at_utc",
+        "automatically_extended"
+      ],
+      "properties": {
+        "server_now_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "automatically_extended": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/grants": {
+      "type": "object",
+      "required": [
+        "items",
+        "limit"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "grant_id",
+              "consent_id",
+              "authorization_status",
+              "observation_state",
+              "revocation_state",
+              "display_state",
+              "original_expires_at_utc",
+              "network_verified",
+              "adapter"
+            ],
+            "properties": {
+              "grant_id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "consent_id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "authorization_status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "accepted",
+                  "rejected",
+                  "expired",
+                  "revoked"
+                ]
+              },
+              "observation_state": {
+                "type": "string",
+                "enum": [
+                  "unknown",
+                  "active",
+                  "inactive",
+                  "stale"
+                ]
+              },
+              "revocation_state": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "queued",
+                  "acknowledged",
+                  "confirmed",
+                  "failed"
+                ]
+              },
+              "display_state": {
+                "type": "string"
+              },
+              "original_expires_at_utc": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "network_verified": {
+                "type": "boolean"
+              },
+              "adapter": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/grants/<grant_id>/revocations": {
+      "type": "object",
+      "required": [
+        "operation_id",
+        "network_verified"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "network_verified": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/operations/<operation_id>": {
+      "type": "object",
+      "required": [
+        "id",
+        "grant_id",
+        "action",
+        "status",
+        "attempts",
+        "last_error_code",
+        "correlation_id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "grant_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "action": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "attempts": {
+          "type": "integer"
+        },
+        "last_error_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "correlation_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/notifications": {
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "severity",
+              "state",
+              "message",
+              "generation"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "severity": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "generation": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/notifications/<notification_id>/acknowledgements": {
+      "type": "object",
+      "required": [
+        "ok"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/consents/export": null,
+    "GET /v1/admin/audit": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor",
+        "actors",
+        "actions"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "action_label",
+              "actor_label",
+              "object_id",
+              "created_at_utc"
+            ],
+            "properties": {
+              "action_label": {
+                "type": "string"
+              },
+              "actor_label": {
+                "type": "string"
+              },
+              "object_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "created_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "before_time",
+                "before_id"
+              ],
+              "properties": {
+                "before_time": {
+                  "type": "string"
+                },
+                "before_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/users": {
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "username",
+              "role",
+              "enabled"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "username": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "viewer",
+                  "operator",
+                  "records",
+                  "settings"
+                ]
+              },
+              "enabled": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "integer",
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  }
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/settings": {
+      "type": "object",
+      "required": [
+        "service_start_utc",
+        "service_end_utc",
+        "terms_version",
+        "policy_version",
+        "audit_retention_days",
+        "production_readiness"
+      ],
+      "properties": {
+        "service_start_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "service_end_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "terms_version": {
+          "type": "string"
+        },
+        "policy_version": {
+          "type": "string"
+        },
+        "audit_retention_days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "production_readiness": {
+          "type": "object",
+          "required": [
+            "approved_terms",
+            "official_policy",
+            "storage_retention_and_roles",
+            "ap_adapter_compatible",
+            "absolute_expiry_supported",
+            "infrastructure_built",
+            "required_tests_completed"
+          ],
+          "properties": {
+            "approved_terms": {
+              "type": "boolean"
+            },
+            "official_policy": {
+              "type": "boolean"
+            },
+            "storage_retention_and_roles": {
+              "type": "boolean"
+            },
+            "ap_adapter_compatible": {
+              "type": "boolean"
+            },
+            "absolute_expiry_supported": {
+              "type": "boolean"
+            },
+            "infrastructure_built": {
+              "type": "boolean"
+            },
+            "required_tests_completed": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/storage": {
+      "type": "object",
+      "required": [
+        "database_allocated_bytes",
+        "backup_bytes",
+        "backup_completed_bytes",
+        "backup_files",
+        "backup_partial_bytes",
+        "backup_partial_files",
+        "backup_other_regular_bytes",
+        "backup_other_regular_files",
+        "application_disk_free_bytes",
+        "backup_bytes_complete",
+        "database_warning",
+        "backup_warning",
+        "thresholds_configured",
+        "db_warning_bytes",
+        "backup_warning_bytes"
+      ],
+      "properties": {
+        "database_allocated_bytes": {
+          "type": "integer"
+        },
+        "backup_bytes": {
+          "type": "integer"
+        },
+        "backup_completed_bytes": {
+          "type": "integer"
+        },
+        "backup_files": {
+          "type": "integer"
+        },
+        "backup_partial_bytes": {
+          "type": "integer"
+        },
+        "backup_partial_files": {
+          "type": "integer"
+        },
+        "backup_other_regular_bytes": {
+          "type": "integer"
+        },
+        "backup_other_regular_files": {
+          "type": "integer"
+        },
+        "application_disk_free_bytes": {
+          "type": "integer"
+        },
+        "backup_bytes_complete": {
+          "type": "boolean"
+        },
+        "database_warning": {
+          "type": "boolean"
+        },
+        "backup_warning": {
+          "type": "boolean"
+        },
+        "thresholds_configured": {
+          "type": "boolean"
+        },
+        "db_warning_bytes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "backup_warning_bytes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/storage-history": {
+      "type": "object",
+      "required": [
+        "items",
+        "forecast"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "observed_at_utc",
+              "database_bytes",
+              "backup_bytes",
+              "application_free_bytes"
+            ],
+            "properties": {
+              "observed_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "database_bytes": {
+                "type": "integer"
+              },
+              "backup_bytes": {
+                "type": "integer"
+              },
+              "application_free_bytes": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "forecast": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "database",
+                "backup"
+              ],
+              "properties": {
+                "database": {
+                  "type": "object",
+                  "required": [
+                    "bytes_per_day",
+                    "days_to_warning"
+                  ],
+                  "properties": {
+                    "bytes_per_day": {
+                      "type": "number"
+                    },
+                    "days_to_warning": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": true
+                },
+                "backup": {
+                  "type": "object",
+                  "required": [
+                    "bytes_per_day",
+                    "days_to_warning"
+                  ],
+                  "properties": {
+                    "bytes_per_day": {
+                      "type": "number"
+                    },
+                    "days_to_warning": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/backups": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "filename",
+              "created_at_utc",
+              "bytes",
+              "checks"
+            ],
+            "properties": {
+              "filename": {
+                "type": "string"
+              },
+              "created_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "bytes": {
+                "type": "integer"
+              },
+              "checks": {
+                "type": "object",
+                "required": [
+                  "decrypt",
+                  "restore"
+                ],
+                "properties": {
+                  "decrypt": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "checked_at_utc"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "passed",
+                              "failed",
+                              "file_changed"
+                            ]
+                          },
+                          "checked_at_utc": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "restore": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "required": [
+                          "status",
+                          "checked_at_utc"
+                        ],
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "passed",
+                              "failed",
+                              "file_changed"
+                            ]
+                          },
+                          "checked_at_utc": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                          }
+                        },
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/backups/<filename>/checks": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "status",
+              "checked_at_utc"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "passed",
+                  "failed",
+                  "file_changed"
+                ]
+              },
+              "checked_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "code": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/backups/<filename>/checks": {
+      "type": "object",
+      "required": [
+        "check_id",
+        "status",
+        "code",
+        "checked_at_utc"
+      ],
+      "properties": {
+        "check_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "status": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "checked_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/ap-readiness": {
+      "type": "object",
+      "required": [
+        "regulatory_model",
+        "facts",
+        "plan",
+        "required_capabilities",
+        "errors"
+      ],
+      "properties": {
+        "regulatory_model": {
+          "type": "string"
+        },
+        "facts": {
+          "type": "object",
+          "required": [
+            "product_model",
+            "sku",
+            "os_family",
+            "os_version",
+            "management_mode",
+            "manager_address"
+          ],
+          "properties": {
+            "product_model": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sku": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "os_family": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "os_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "management_mode": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "manager_address": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "plan": {
+          "type": "string"
+        },
+        "required_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/preflight": {
+      "type": "object",
+      "required": [
+        "checks",
+        "failed"
+      ],
+      "properties": {
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "status",
+              "label",
+              "detail"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "failed": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/diagnostics": {
+      "type": "object",
+      "required": [
+        "checks",
+        "audit_saved",
+        "report_id",
+        "checked_at_utc"
+      ],
+      "properties": {
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "status",
+              "label",
+              "detail"
+            ],
+            "properties": {
+              "status": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "audit_saved": {
+          "type": "boolean"
+        },
+        "report_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "checked_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "target": {
+          "type": "object",
+          "required": [
+            "host",
+            "port",
+            "database",
+            "user"
+          ],
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "integer"
+            },
+            "database": {
+              "type": "string"
+            },
+            "user": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/mfa-status": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "needs_reset",
+        "recovery_codes_remaining",
+        "enrollment"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "needs_reset": {
+          "type": "boolean"
+        },
+        "recovery_codes_remaining": {
+          "type": "integer"
+        },
+        "enrollment": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/notification-cases": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor",
+        "assignees",
+        "history"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "condition",
+              "message",
+              "generation",
+              "workflow"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "condition": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "generation": {
+                "type": "integer"
+              },
+              "workflow": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "assignee",
+                      "assignee_name",
+                      "status",
+                      "note"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                      },
+                      "assignee": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "assignee_name": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "status": {
+                        "type": "string"
+                      },
+                      "note": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assignees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "username"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "username": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "created_at",
+              "actor_name",
+              "assignee_name",
+              "status",
+              "note"
+            ],
+            "properties": {
+              "created_at": {
+                "type": "integer"
+              },
+              "actor_name": {
+                "type": "string"
+              },
+              "assignee_name": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "status": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/notification-cases/<notification_id>": {
+      "type": "object",
+      "required": [
+        "update_id",
+        "condition_unchanged"
+      ],
+      "properties": {
+        "update_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "condition_unchanged": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/terms-revisions": {
+      "type": "object",
+      "required": [
+        "items",
+        "publication"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "version",
+              "policy_version",
+              "created_at_utc",
+              "preview_sha256"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "version": {
+                "type": "string"
+              },
+              "policy_version": {
+                "type": "string"
+              },
+              "created_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "preview_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "publication": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "revision_id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                },
+                "revision_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/terms-revisions/<revision_id>": {
+      "type": "object",
+      "required": [
+        "id",
+        "version",
+        "policy_version",
+        "created_at_utc",
+        "preview_sha256",
+        "ja",
+        "en"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "version": {
+          "type": "string"
+        },
+        "policy_version": {
+          "type": "string"
+        },
+        "created_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "preview_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "ja": {
+          "type": "string"
+        },
+        "en": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/terms-revisions": {
+      "type": "object",
+      "required": [
+        "revision_id",
+        "scope"
+      ],
+      "properties": {
+        "revision_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "scope": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/terms-publications": {
+      "type": "object",
+      "required": [
+        "publication_id",
+        "scope",
+        "production_enabled"
+      ],
+      "properties": {
+        "publication_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "production_enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/usage-summary": {
+      "type": "object",
+      "required": [
+        "day_jst",
+        "hours",
+        "total_consents",
+        "total_errors",
+        "error_collection_started_at_utc",
+        "unrecorded_errors_current_process"
+      ],
+      "properties": {
+        "day_jst": {
+          "type": "string"
+        },
+        "hours": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "hour_jst",
+              "consents",
+              "client_errors",
+              "server_errors"
+            ],
+            "properties": {
+              "hour_jst": {
+                "type": "string"
+              },
+              "consents": {
+                "type": "integer"
+              },
+              "client_errors": {
+                "type": "integer"
+              },
+              "server_errors": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "total_consents": {
+          "type": "integer"
+        },
+        "total_errors": {
+          "type": "integer"
+        },
+        "error_collection_started_at_utc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unrecorded_errors_current_process": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/checklists": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor",
+        "day",
+        "phase",
+        "run",
+        "assignees",
+        "summary",
+        "history"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "item_id",
+              "label",
+              "entry"
+            ],
+            "properties": {
+              "item_id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "entry": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "outcome",
+                      "assignee",
+                      "assignee_name",
+                      "note",
+                      "checked_at",
+                      "actor_name"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                      },
+                      "outcome": {
+                        "type": "string"
+                      },
+                      "assignee": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "assignee_name": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "note": {
+                        "type": "string"
+                      },
+                      "checked_at": {
+                        "type": "integer"
+                      },
+                      "actor_name": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "day": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "run": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assignees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "username"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "username": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "summary": {
+          "type": "object",
+          "required": [
+            "pending",
+            "problems",
+            "confirmed",
+            "total"
+          ],
+          "properties": {
+            "pending": {
+              "type": "integer"
+            },
+            "problems": {
+              "type": "integer"
+            },
+            "confirmed": {
+              "type": "integer"
+            },
+            "total": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": true
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "checked_at",
+              "actor_name",
+              "outcome",
+              "item_id",
+              "note"
+            ],
+            "properties": {
+              "checked_at": {
+                "type": "integer"
+              },
+              "actor_name": {
+                "type": "string"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "item_id": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/checklists": {
+      "type": "object",
+      "required": [
+        "run_id"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/checklists/<run_id>/entries": {
+      "type": "object",
+      "required": [
+        "entry_id",
+        "network_verification"
+      ],
+      "properties": {
+        "entry_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "network_verification": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/support-bundles": {
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "report_id",
+              "created_at_utc",
+              "bytes",
+              "download_url"
+            ],
+            "properties": {
+              "report_id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "created_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "bytes": {
+                "type": "integer"
+              },
+              "download_url": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/support-bundles": {
+      "type": "object",
+      "required": [
+        "report_id",
+        "download_url",
+        "external_send"
+      ],
+      "properties": {
+        "report_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "download_url": {
+          "type": "string"
+        },
+        "external_send": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/support-bundles/<report_id>": {
+      "type": "object",
+      "required": [
+        "format",
+        "format_version",
+        "release",
+        "correlation_id",
+        "counts",
+        "omissions"
+      ],
+      "properties": {
+        "format": {
+          "type": "string"
+        },
+        "format_version": {
+          "type": "integer"
+        },
+        "release": {
+          "type": "string"
+        },
+        "correlation_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "counts": {
+          "type": "object",
+          "required": [
+            "consents",
+            "grants",
+            "operations"
+          ],
+          "properties": {
+            "consents": {
+              "type": "integer"
+            },
+            "grants": {
+              "type": "integer"
+            },
+            "operations": {
+              "type": "integer"
+            }
+          },
+          "additionalProperties": true
+        },
+        "omissions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/event-information": {
+      "type": "object",
+      "required": [
+        "values",
+        "config_sha256",
+        "scope"
+      ],
+      "properties": {
+        "values": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "config_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "scope": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/event-information/plans": {
+      "type": "object",
+      "required": [
+        "plan_id",
+        "filename",
+        "values",
+        "applied",
+        "scope"
+      ],
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "values": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "applied": {
+          "type": "boolean"
+        },
+        "scope": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/event-information/plan-imports": {
+      "type": "object",
+      "required": [
+        "plan_id",
+        "filename",
+        "values",
+        "applied",
+        "scope"
+      ],
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "values": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "applied": {
+          "type": "boolean"
+        },
+        "scope": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/event-information/plans": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "plan_id",
+              "version",
+              "created_at_utc",
+              "base_values",
+              "values",
+              "content_sha256",
+              "base_config_sha256",
+              "source_file_status",
+              "current_config_sha256",
+              "base_config_matches",
+              "state",
+              "effective_state",
+              "reason_codes",
+              "review_valid_until_utc",
+              "target_matches",
+              "import_provenance"
+            ],
+            "properties": {
+              "plan_id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "version": {
+                "type": "integer"
+              },
+              "created_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "base_values": {
+                "type": "object",
+                "required": [
+                  "name_ja",
+                  "name_en",
+                  "ssid",
+                  "contact_ja",
+                  "contact_en",
+                  "period_confirmed",
+                  "service_start_utc",
+                  "service_end_utc"
+                ],
+                "properties": {
+                  "name_ja": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "name_en": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "ssid": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contact_ja": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contact_en": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "period_confirmed": {
+                    "type": "boolean"
+                  },
+                  "service_start_utc": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "service_end_utc": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              },
+              "values": {
+                "type": "object",
+                "required": [
+                  "name_ja",
+                  "name_en",
+                  "ssid",
+                  "contact_ja",
+                  "contact_en",
+                  "period_confirmed",
+                  "service_start_utc",
+                  "service_end_utc"
+                ],
+                "properties": {
+                  "name_ja": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "name_en": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "ssid": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contact_ja": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contact_en": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "period_confirmed": {
+                    "type": "boolean"
+                  },
+                  "service_start_utc": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "service_end_utc": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              },
+              "content_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "base_config_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "source_file_status": {
+                "type": "string"
+              },
+              "current_config_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "base_config_matches": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string"
+              },
+              "effective_state": {
+                "type": "string"
+              },
+              "reason_codes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "review_valid_until_utc": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target_matches": {
+                "type": "boolean"
+              },
+              "import_provenance": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/event-information/plans/<plan_id>": {
+      "type": "object",
+      "required": [
+        "plan_id",
+        "version",
+        "created_at_utc",
+        "base_values",
+        "values",
+        "content_sha256",
+        "base_config_sha256",
+        "source_file_status",
+        "current_config_sha256",
+        "base_config_matches",
+        "state",
+        "effective_state",
+        "reason_codes",
+        "review_valid_until_utc",
+        "target_matches",
+        "import_provenance"
+      ],
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "created_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "base_values": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "values": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "base_config_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source_file_status": {
+          "type": "string"
+        },
+        "current_config_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "base_config_matches": {
+          "type": "boolean"
+        },
+        "state": {
+          "type": "string"
+        },
+        "effective_state": {
+          "type": "string"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_valid_until_utc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_matches": {
+          "type": "boolean"
+        },
+        "import_provenance": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/event-information/plans/<plan_id>/review-requests": {
+      "type": "object",
+      "required": [
+        "plan_id",
+        "version",
+        "created_at_utc",
+        "base_values",
+        "values",
+        "content_sha256",
+        "base_config_sha256",
+        "source_file_status",
+        "current_config_sha256",
+        "base_config_matches",
+        "state",
+        "effective_state",
+        "reason_codes",
+        "review_valid_until_utc",
+        "target_matches",
+        "import_provenance"
+      ],
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "created_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "base_values": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "values": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "base_config_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source_file_status": {
+          "type": "string"
+        },
+        "current_config_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "base_config_matches": {
+          "type": "boolean"
+        },
+        "state": {
+          "type": "string"
+        },
+        "effective_state": {
+          "type": "string"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_valid_until_utc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_matches": {
+          "type": "boolean"
+        },
+        "import_provenance": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/event-information/plans/<plan_id>/reviews": {
+      "type": "object",
+      "required": [
+        "plan_id",
+        "version",
+        "created_at_utc",
+        "base_values",
+        "values",
+        "content_sha256",
+        "base_config_sha256",
+        "source_file_status",
+        "current_config_sha256",
+        "base_config_matches",
+        "state",
+        "effective_state",
+        "reason_codes",
+        "review_valid_until_utc",
+        "target_matches",
+        "import_provenance"
+      ],
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "created_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "base_values": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "values": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "base_config_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source_file_status": {
+          "type": "string"
+        },
+        "current_config_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "base_config_matches": {
+          "type": "boolean"
+        },
+        "state": {
+          "type": "string"
+        },
+        "effective_state": {
+          "type": "string"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_valid_until_utc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_matches": {
+          "type": "boolean"
+        },
+        "import_provenance": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/event-information/plans/<plan_id>/withdrawals": {
+      "type": "object",
+      "required": [
+        "plan_id",
+        "version",
+        "created_at_utc",
+        "base_values",
+        "values",
+        "content_sha256",
+        "base_config_sha256",
+        "source_file_status",
+        "current_config_sha256",
+        "base_config_matches",
+        "state",
+        "effective_state",
+        "reason_codes",
+        "review_valid_until_utc",
+        "target_matches",
+        "import_provenance"
+      ],
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "created_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "base_values": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "values": {
+          "type": "object",
+          "required": [
+            "name_ja",
+            "name_en",
+            "ssid",
+            "contact_ja",
+            "contact_en",
+            "period_confirmed",
+            "service_start_utc",
+            "service_end_utc"
+          ],
+          "properties": {
+            "name_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "name_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "ssid": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_ja": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contact_en": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "period_confirmed": {
+              "type": "boolean"
+            },
+            "service_start_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "service_end_utc": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "base_config_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source_file_status": {
+          "type": "string"
+        },
+        "current_config_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "base_config_matches": {
+          "type": "boolean"
+        },
+        "state": {
+          "type": "string"
+        },
+        "effective_state": {
+          "type": "string"
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_valid_until_utc": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_matches": {
+          "type": "boolean"
+        },
+        "import_provenance": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "status": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/event-information/plans/<plan_id>/events": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "event_id",
+              "kind",
+              "created_at_utc",
+              "version"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "created_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/event-information/plans/<plan_id>/application-status": {
+      "type": "object",
+      "required": [
+        "plan_id",
+        "activation_state",
+        "network_verified"
+      ],
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "activation_state": {
+          "type": "string"
+        },
+        "network_verified": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/event-information/plans/<plan_id>/apply-attempts": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "attempt_id",
+              "created_at_utc",
+              "latest_observation"
+            ],
+            "properties": {
+              "attempt_id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "created_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "latest_observation": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "observation_id",
+                      "version",
+                      "outcome",
+                      "observed_config_sha256",
+                      "evidence_code",
+                      "created_at_utc"
+                    ],
+                    "properties": {
+                      "observation_id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                      },
+                      "version": {
+                        "type": "integer"
+                      },
+                      "outcome": {
+                        "type": "string"
+                      },
+                      "observed_config_sha256": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{64}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "evidence_code": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "created_at_utc": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/event-information/plans/<plan_id>/apply-attempts/<attempt_id>/observations": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "observation_id",
+              "version",
+              "outcome",
+              "observed_config_sha256",
+              "evidence_code",
+              "created_at_utc"
+            ],
+            "properties": {
+              "observation_id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "version": {
+                "type": "integer"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "observed_config_sha256": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "evidence_code": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "created_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/consent-archives": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor",
+        "as_of_utc",
+        "target_fixed"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "accepted_at_utc",
+              "language",
+              "deadline_scope"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "accepted_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "language": {
+                "type": "string",
+                "enum": [
+                  "ja",
+                  "en"
+                ]
+              },
+              "deadline_scope": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "as_of_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "target_fixed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/consent-archive-exports": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "export_id",
+              "owner_id",
+              "filters",
+              "as_of_utc",
+              "created_at_utc",
+              "state",
+              "effective_state",
+              "version",
+              "error_code",
+              "snapshot"
+            ],
+            "properties": {
+              "export_id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "owner_id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "filters": {
+                "type": "object",
+                "required": [
+                  "event_id",
+                  "accepted_start_utc",
+                  "accepted_end_utc",
+                  "language",
+                  "deadline_scope"
+                ],
+                "properties": {
+                  "event_id": {
+                    "type": "string"
+                  },
+                  "accepted_start_utc": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "accepted_end_utc": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "language": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "ja",
+                          "en"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "deadline_scope": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              },
+              "as_of_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "created_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "state": {
+                "type": "string"
+              },
+              "effective_state": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer"
+              },
+              "error_code": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "snapshot": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "snapshot_id",
+                      "total_count",
+                      "prepared_at_utc",
+                      "first_page_cursor"
+                    ],
+                    "properties": {
+                      "snapshot_id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                      },
+                      "total_count": {
+                        "type": "integer"
+                      },
+                      "prepared_at_utc": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "first_page_cursor": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/consent-archive-exports/<export_id>": {
+      "type": "object",
+      "required": [
+        "export_id",
+        "owner_id",
+        "filters",
+        "as_of_utc",
+        "created_at_utc",
+        "state",
+        "effective_state",
+        "version",
+        "error_code",
+        "snapshot"
+      ],
+      "properties": {
+        "export_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "owner_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "filters": {
+          "type": "object",
+          "required": [
+            "event_id",
+            "accepted_start_utc",
+            "accepted_end_utc",
+            "language",
+            "deadline_scope"
+          ],
+          "properties": {
+            "event_id": {
+              "type": "string"
+            },
+            "accepted_start_utc": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "accepted_end_utc": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "language": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "ja",
+                    "en"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "deadline_scope": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "as_of_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state": {
+          "type": "string"
+        },
+        "effective_state": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "snapshot_id",
+                "total_count",
+                "prepared_at_utc",
+                "first_page_cursor"
+              ],
+              "properties": {
+                "snapshot_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                },
+                "total_count": {
+                  "type": "integer"
+                },
+                "prepared_at_utc": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "first_page_cursor": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/consent-archive-exports": {
+      "type": "object",
+      "required": [
+        "export_id",
+        "state",
+        "as_of_utc",
+        "status_path"
+      ],
+      "properties": {
+        "export_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "state": {
+          "type": "string"
+        },
+        "as_of_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status_path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/consent-archive-exports/<export_id>/events": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "event_id",
+              "kind",
+              "created_at_utc"
+            ],
+            "properties": {
+              "event_id": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "created_at_utc": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "GET /v1/admin/consent-archive-exports/<export_id>/content": null,
+    "GET /v1/admin/workflow-alerts": {
+      "type": "object",
+      "required": [
+        "items",
+        "next_cursor",
+        "summary",
+        "observed_at_utc",
+        "complete_snapshot"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "message",
+              "effective_state",
+              "resource_kind",
+              "resource_id",
+              "plan_id"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "effective_state": {
+                "type": "string"
+              },
+              "resource_kind": {
+                "type": "string"
+              },
+              "resource_id": {
+                "type": "string"
+              },
+              "plan_id": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "summary": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "message",
+              "generation"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "generation": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "observed_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "complete_snapshot": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "executed": false,
+  "notes": [
+    "operation_id is optional for consent HTTP 200; present on the newly inserted HTTP 201 path.",
+    "Canonical definitions: server/dev/response-contracts.source.json; document JSON is a generated mirror. Generator is supplied but has not been executed."
+  ],
+  "definition_format": 1
+}
