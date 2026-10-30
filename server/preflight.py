@@ -64,7 +64,7 @@ def inspect_home(home,online=True,package_check=True):
         add('dependencies','pass','依存ライブラリ','固定した12パッケージの版が一致しています。')
     except Exception: add('dependencies','fail','依存ライブラリ','不足または版の不一致があります。専用の導入手順を実行してください。')
     if package_check:
-        from stream_backup import file_hash
+        from filesystem_guard import file_hash
         try:
             manifest=json.loads((root/'release-manifest.json').read_text(encoding='utf-8'))
             if not all(file_hash(root/name)==value for name,value in manifest['files'].items()): raise ValueError()

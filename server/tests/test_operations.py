@@ -9,7 +9,8 @@ from unittest.mock import patch
 from urllib.parse import urlencode
 from app import uid,utc
 from database import Connection,connect,DatabaseError
-from jobs import backup,monitor
+from jobs import monitor
+from workflow_backup import backup_stream as backup
 from operations import inspect_grants,mysql_diagnostic,backup_inventory
 from ap_profile import inspect_profile
 import test_service as service_tests
@@ -83,7 +84,7 @@ class OperationalTests(unittest.TestCase):
         directory=self.home/'backups';directory.mkdir()
         names=[]
         for i in range(3):
-            name=f'backup-{self.s.now()+i}-{uid()}.fernet';names.append(name)
+            name=f'backup-{self.s.now()+i}-{uid()}.sffbackup';names.append(name)
             (directory/name).write_bytes(b'catalog-only-fixture')
         (directory/'unrecognized-file.txt').write_text('preserve this',encoding='utf-8')
         first=backup_inventory(self.s,limit=2)

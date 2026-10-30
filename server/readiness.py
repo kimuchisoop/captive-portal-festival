@@ -38,7 +38,7 @@ def support_payload(s,correlation_id):
         alerts=db.execute("SELECT code,severity,state FROM notifications WHERE state!='resolved' ORDER BY code").fetchall()
     worker=worker_status(jobs[0] if jobs else None,s.now())
     backup_age=max(0,s.now()-int(backup[0])) if backup else None
-    known_codes={'backup_legacy_size','retention_paused','adapter_unavailable','retention_unconfigured','disk_low','database_size_high',
+    known_codes={'retention_paused','adapter_unavailable','retention_unconfigured','disk_low','database_size_high',
                  'plan_review_pending','plan_review_required','plan_apply_unknown','plan_activation_pending','archive_export_failed','schema5_recovery_required','backup_size_high','backup_inventory_incomplete','capacity_thresholds_unconfigured','operation_failed','backup_overdue','database_structure','backup_failed'}
     return dict(format='festival-wifi-support-summary',format_version=1,release='0.11.10-rc1',checked_at_utc=utc(s.now()),
                 correlation_id=correlation_id,database_schema=5,mode='local',production_enabled=False,ap_adapter='disconnected',

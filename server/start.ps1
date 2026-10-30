@@ -1,5 +1,5 @@
 param([Parameter(Mandatory = $true)][string]$DataDirectory,
-      [ValidateSet('serve','worker','run-jobs','backup','backup-stream','preflight','status','ap-check','diagnose-mysql')][string]$Mode = 'serve')
+      [ValidateSet('serve','worker','run-jobs','backup','preflight','status','ap-check','diagnose-mysql')][string]$Mode = 'serve')
 $ErrorActionPreference = 'Stop'
 $pythonPath = Join-Path $PSScriptRoot '.venv/Scripts/python.exe'
 & $pythonPath (Join-Path $PSScriptRoot 'manage.py') --home ([System.IO.Path]::GetFullPath($DataDirectory)) $Mode

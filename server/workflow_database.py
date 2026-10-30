@@ -1,13 +1,10 @@
 """Explicit schema-five maintenance and conservative table/column grant diagnosis."""
 from pathlib import Path
-import json,re,os
-from app import ROOT,uid
-from database import load_settings,transaction,Connection,connect
+import json,re
+from app import ROOT
+from database import load_settings,transaction
 from filesystem_guard import regular
 from preflight import private_paths
-from workflow_common import canonical,sha,target_lock,private_dir,read_private
-from workflow_generation import create_generation
-from jobs import secure_new_file
 
 CONTRACT=json.loads((ROOT/'workflow-contract.json').read_text(encoding='utf-8'))
 TABLES={table['name']:table for table in CONTRACT['tables']}
@@ -20,9 +17,9 @@ def maintenance_settings(path,runtime):
     if maintenance['user']==runtime['user']:raise ValueError('Separate maintenance account required')
     return maintenance
 
-def verify_contract(db,partial=False):
+def verify_contract(db):
     existing={r['TABLE_NAME']:r['ENGINE'] for r in db.execute("SELECT TABLE_NAME,ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE'").fetchall()}
-    if set(existing)-set(TABLES) or (not partial and set(existing)!=set(TABLES)):raise ValueError('Unexpected table set')
+    if set(existing)!=set(TABLES):raise ValueError('Unexpected table set')
     for name in existing:
         if existing[name]!='InnoDB':raise ValueError('InnoDB required')
         columns=db.execute('SHOW COLUMNS FROM `'+name+'`').fetchall()
@@ -35,66 +32,6 @@ def verify_contract(db,partial=False):
         primary=[r['Column_name'] for r in sorted((r for r in keys if r['Key_name']=='PRIMARY'),key=lambda r:r['Seq_in_index'])]
         if primary!=expected['primary']:raise ValueError('Primary key differs')
     return True
-
-def statements(path):
-    text='\n'.join(line for line in Path(path).read_text(encoding='utf-8').splitlines() if not line.lstrip().startswith('--'))
-    return [part.strip() for part in text.split(';') if part.strip()]
-
-def migrate(home,maintenance_file):
-    from recovery_kit import stopped
-    home=Path(home).resolve();runtime=load_settings(home/'mysql.json');settings=maintenance_settings(maintenance_file,runtime)
-    with stopped(home),target_lock(home):
-        from filesystem_guard import is_link
-        if any((home/name).exists() or is_link(home/name) for name in ('initialization.incomplete','restore.incomplete','policy-apply.incomplete')):
-            raise ValueError('Complete the other retained operation before schema maintenance')
-        marker=home/'upgrade.incomplete'
-        if is_link(marker):raise ValueError('Linked upgrade guard')
-        with transaction(settings,True) as db:
-            version=db.execute("SELECT value FROM meta WHERE name='schema_version'").fetchone()
-            if not version or version[0] not in ('4','5'):raise ValueError('Schema four required')
-            if version[0]=='5' and not marker.exists():verify_contract(db);return dict(changed=False)
-            verify_contract(db,partial=True)
-            if not marker.exists():secure_new_file(marker,canonical(dict(format='schema5-upgrade',id=uid())))
-            history=private_dir(home,'migration-history')
-            for sql in statements(ROOT/'features-v5.sql'):
-                skip=False
-                match=re.match(r'CREATE TABLE (\w+)\b',sql,re.I)
-                if match:skip=bool(db.execute('SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?',(match[1],)).fetchone())
-                match=re.match(r'CREATE TRIGGER (\w+)\b',sql,re.I)
-                if match:
-                    old=db.execute('SELECT ACTION_STATEMENT,EVENT_MANIPULATION,EVENT_OBJECT_TABLE,ACTION_TIMING FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=DATABASE() AND TRIGGER_NAME=?',(match[1],)).fetchone()
-                    if old:
-                        expected=re.match(r'CREATE TRIGGER \w+ (BEFORE|AFTER) (UPDATE|DELETE|INSERT) ON (\w+) FOR EACH ROW (.+)',sql,re.I|re.S)
-                        compact=lambda value:re.sub(r'\s+',' ',value.replace('`','').strip()).lower()
-                        if not expected or (old['ACTION_TIMING'],old['EVENT_MANIPULATION'],old['EVENT_OBJECT_TABLE'])!=(expected[1].upper(),expected[2].upper(),expected[3]) or compact(old['ACTION_STATEMENT'])!=compact(expected[4]):raise ValueError('Existing trigger differs')
-                        skip=True
-                match=re.match(r'CREATE (?:UNIQUE )?INDEX (\w+) ON (\w+)\s*\((.+)\)',sql,re.I|re.S)
-                if match:
-                    old=db.execute('SHOW INDEX FROM `'+match[2]+'` WHERE Key_name=?',(match[1],)).fetchall()
-                    if old:
-                        actual=[r['Column_name']+(('('+str(r['Sub_part'])+')') if r['Sub_part'] else '') for r in sorted(old,key=lambda r:r['Seq_in_index'])]
-                        expected=[item.strip().replace('`','') for item in match[3].split(',')]
-                        if actual!=expected:raise ValueError('Existing index differs')
-                        skip=True
-                if not skip:db.execute(sql)
-                secure_new_file(history/('statement-'+uid()+'.json'),canonical(dict(sql_sha256=sha(sql.encode()),status='existing' if skip else 'created')))
-            verify_contract(db)
-            config=__import__('workflow_common').strict_json(read_private(home,'.','config.json'))
-            config['backup_format']='stream-v2'
-            if not isinstance(config.get('workflow_policy'),dict):config['workflow_policy']=json.loads((ROOT/'workflow-policy.proposal.json').read_text(encoding='utf-8'))
-            config['workflow_policy']['approved']=False
-            before=read_private(home,'.','config.json');change=uid();directory=private_dir(home,'configuration-history')
-            secure_new_file(directory/(change+'-upgrade-before.json'),before)
-            updated=canonical(config);secure_new_file(directory/(change+'-upgrade-after.json'),updated)
-            replacement=home/('config-'+change+'.pending');secure_new_file(replacement,updated)
-            if read_private(home,'.','config.json')!=before:raise ValueError('Config changed')
-            os.replace(replacement,home/'config.json')
-            db.execute("UPDATE meta SET value='5' WHERE name='schema_version'")
-            if not db.execute("SELECT 1 FROM meta WHERE name='runtime5_generation'").fetchone():create_generation(db,__import__('time').time_ns()//10**9)
-        destination=history/('upgrade-'+uid()+'.completed.json')
-        if not marker.resolve().is_relative_to(home) or not destination.resolve().is_relative_to(home):raise ValueError('Unsafe marker move')
-        os.rename(marker,destination)
-        return dict(changed=True,schema_version=5,records_preserved=True)
 
 def split_privileges(text):
     parts=[];start=0;depth=0;quoted=False;index=0
