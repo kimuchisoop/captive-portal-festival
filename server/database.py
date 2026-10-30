@@ -1,7 +1,10 @@
 """MySQL only. InnoDB transactions and a per-database application write lock."""
 import hashlib
 import json
+import os
 import re
+import threading
+import time
 from contextlib import contextmanager
 from pathlib import Path
 import mysql.connector
@@ -56,9 +59,60 @@ def connect(c):
         raw.close(); raise ValueError('MySQL 8.0.16+ required')
     return raw
 
+# Connecting (TLS and authentication, in pure Python) costs about 35 queries, so finished
+# transactions hand their connection back for reuse. A returned connection is reset on the
+# server (session variables, user locks, temporary tables) and given the connect-time
+# settings again; any error, failed reset or age limit closes it instead.
+POOL_IDLE_LIMIT = 8
+POOL_MAX_AGE_SECONDS = 300
+SESSION_SETTINGS = "SET NAMES utf8mb4 COLLATE utf8mb4_bin, autocommit=0"
+_pool = {}
+_pool_lock = threading.Lock()
+
+def _pool_key(c):
+    # Different accounts or targets never share a connection; a forked process starts empty.
+    return os.getpid(), hashlib.sha256(json.dumps(c, sort_keys=True).encode()).hexdigest()
+
+def _close(raw):
+    try: raw.close()
+    except Exception: pass
+
+def _checkout(c):
+    key = _pool_key(c)
+    while True:
+        with _pool_lock:
+            idle = _pool.get(key)
+            entry = idle.pop() if idle else None
+        if entry is None:
+            return key, connect(c), time.monotonic()
+        raw, created = entry
+        if time.monotonic() - created < POOL_MAX_AGE_SECONDS:
+            try:
+                raw.ping(reconnect=False)
+                return key, raw, created
+            except Exception: pass
+        _close(raw)
+
+def _checkin(key, raw, created):
+    if time.monotonic() - created >= POOL_MAX_AGE_SECONDS: return _close(raw)
+    try:
+        if not raw.cmd_reset_connection(): return _close(raw)
+        cursor = raw.cursor(); cursor.execute(SESSION_SETTINGS); cursor.close()
+    except Exception: return _close(raw)
+    with _pool_lock:
+        idle = _pool.setdefault(key, [])
+        if len(idle) < POOL_IDLE_LIMIT:
+            idle.append((raw, created)); return
+    _close(raw)
+
+def clear_pool():
+    with _pool_lock:
+        entries = [entry for idle in _pool.values() for entry in idle]; _pool.clear()
+    for raw, _ in entries: _close(raw)
+
 @contextmanager
 def transaction(c, write=False):
-    raw = connect(c); db = Connection(raw); locked = False
+    key, raw, created = _checkout(c); db = Connection(raw); locked = False; reusable = False
     lock = 'festival-wifi:' + hashlib.sha256(c['database'].encode()).hexdigest()[:32]
     try:
         if write:
@@ -67,12 +121,16 @@ def transaction(c, write=False):
         raw.start_transaction(isolation_level='REPEATABLE READ', readonly=not write)
         yield db
         raw.commit() if write else raw.rollback()
+        reusable = True
     except BaseException:
         raw.rollback(); raise
     finally:
         try:
             if locked: db.execute('SELECT RELEASE_LOCK(?)',(lock,))
-        finally: raw.close()
+        except BaseException:
+            reusable = False; raise
+        finally:
+            _checkin(key, raw, created) if reusable else _close(raw)
 
 def initialize_schema(c, schema_file):
     raw = connect(c); db = Connection(raw)
