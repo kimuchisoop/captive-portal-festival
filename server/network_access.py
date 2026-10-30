@@ -11,7 +11,7 @@ import threading
 import time
 from pathlib import Path
 
-from vyos_gateway import VyosGateway, GatewayError, GatewayRefused, GatewayRejected
+from vyos_gateway import VyosGateway, GatewayError, GatewayRefused, GatewayRejected, GatewayUnavailable
 
 FIELDS = {'enabled', 'api_origin', 'api_key_file', 'ca_file', 'guest_networks', 'access_seconds'}
 PREFIX = 'ipv4:'
@@ -147,7 +147,12 @@ def process_due(s):
             lock.execute('SELECT RELEASE_LOCK(?)', (LOCK,))
 
 
+def grant_deadline(db, grant_id):
+    return db.execute('SELECT delete_after FROM grants WHERE id=?', (grant_id,)).fetchone()['delete_after']
+
+
 def run_batch(s):
+    from app import uid
     from jobs import notify
     now = s.now()
     with s.db(True) as db:
@@ -222,7 +227,13 @@ def run_batch(s):
             if r in refused or r['attempts'] + 1 >= AUTHORIZE_ATTEMPTS:
                 code = 'gateway_refused' if r in refused else error_code(failure)
                 db.execute("UPDATE operations SET status='failed',last_error_code=? WHERE id=?", (code, r['id']))
-                db.execute("UPDATE grants SET authorization_status='rejected',row_version=row_version+1 WHERE id=? AND authorization_status='pending'", (r['grant_id'],))
+                changed = db.execute("UPDATE grants SET authorization_status='rejected',row_version=row_version+1 WHERE id=? AND authorization_status='pending'", (r['grant_id'],)).rowcount
+                if changed and isinstance(failure, GatewayUnavailable) and r not in refused and not db.execute(
+                        "SELECT 1 FROM operations WHERE grant_id=? AND action='disconnect'", (r['grant_id'],)).fetchone():
+                    # No answer is not "not added": the commit may have reached core-rt, so remove the address to be sure.
+                    db.execute("UPDATE grants SET revocation_state='queued',row_version=row_version+1 WHERE id=?", (r['grant_id'],))
+                    db.execute('INSERT INTO operations VALUES (?,?,?,?,?,?,0,?,NULL,?,?)',
+                               (uid(), r['grant_id'], 'disconnect', 'allow_unconfirmed', 'worker', 'queued', now, uid(), grant_deadline(db, r['grant_id'])))
                 final.append(r)
             else:
                 db.execute('UPDATE operations SET next_attempt=?,last_error_code=? WHERE id=?', (now + ALLOW_RETRY, error_code(failure), r['id']))

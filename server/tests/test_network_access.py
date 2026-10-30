@@ -18,9 +18,11 @@ class Answer(io.BytesIO):
 
 class FakeRouter:
     """Like VyOS: one request may carry a list of commands committed together; deleting a missing address fails."""
-    def __init__(self):self.members=set();self.commits=[];self.fail=None
+    def __init__(self):self.members=set();self.commits=[];self.fail=None;self.lose_answer=False
     def __call__(self,request,timeout,context):
         if self.fail:raise self.fail
+        if self.lose_answer and not request.full_url.endswith('/retrieve'):
+            self.lose_answer=False;self.__call__(request,timeout,context).close();raise URLError('answer lost')
         form=parse_qs(request.data.decode());data=json.loads(form['data'][0])
         if request.full_url.endswith('/retrieve'):
             if not self.members:return self.answer(False,error='Configuration under specified path is empty')
@@ -131,6 +133,19 @@ class Flow(unittest.TestCase):
         with self.s.db() as db:
             self.assertEqual(db.execute("SELECT state FROM notifications WHERE dedupe_key='portal_allow_failed'").fetchone()['state'],'open')
         self.router.fail=None;process_due(self.s);self.assertEqual(self.router.members,set())
+
+    def test_unanswered_allow_that_reached_the_router_is_removed(self):
+        ip='192.0.2.45';c,_,saved=self.consent(ip);self.router.lose_answer=True
+        process_due(self.s);self.assertEqual(self.router.members,{ip})  # committed, but the app never heard back
+        self.router.fail=URLError('down')
+        for _ in range(2):
+            self.clock.value+=31;process_due(self.s)
+        g=self.grant(c,ip,saved['grant_id']);self.assertEqual(g['authorization_status'],'rejected')
+        self.router.fail=None;self.clock.value+=31;process_due(self.s)
+        self.assertEqual(self.router.members,set())
+        with self.s.db() as db:
+            op=db.execute("SELECT status,reason_code FROM operations WHERE grant_id=? AND action='disconnect'",(saved['grant_id'],)).fetchone()
+        self.assertEqual((op['status'],op['reason_code']),('confirmed','allow_unconfirmed'))
 
     def test_revocation_keeps_address_shared_with_a_newer_grant(self):
         ip='192.0.2.50';first,_,old=self.consent(ip);second,_,new=self.consent(ip);process_due(self.s);self.assertEqual(self.router.members,{ip})
