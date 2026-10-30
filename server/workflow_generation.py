@@ -101,6 +101,11 @@ def release_recovery(home):
     from recovery_kit import stopped
     home=Path(home).resolve()
     with stopped(home),target_lock(home):
+        if not (home/'restore.incomplete').exists():
+            receipts=sorted((home/'restore-history').glob('*/release-*.json')) if (home/'restore-history').is_dir() else []
+            if not receipts:raise ValueError('No restored data waiting for release in '+str(home))
+            latest=max((strict_json(p.read_bytes()) for p in receipts),key=lambda r:r['released_at'])
+            return dict(released=True,already_released=True,generation=latest['generation'],records_preserved=True)
         s=OpsContext(home);marker=strict_json(read_private(home,'.','restore.incomplete'))
         restore_id=identifier(marker['restore_id']);directory=private_dir(home,'restore-history')/restore_id
         if not directory.resolve().is_relative_to(home):raise ValueError('Outside recovery root')

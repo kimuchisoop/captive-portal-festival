@@ -44,7 +44,9 @@ class Schema5RecoveryTests(unittest.TestCase):
         self.assertNotEqual((destination/'session.key').read_bytes(),(self.home/'session.key').read_bytes())
         self.assertEqual(self.count(self.s,'consents'),consents)  # source is untouched
         self.assertFalse((destination/'restore.incomplete').exists())
-        with self.assertRaises(OSError):release_recovery(destination)  # nothing left to release
+        again=release_recovery(destination)  # a second run reports the finished release
+        self.assertTrue(again['already_released']);self.assertEqual(again['generation'],released['generation'])
+        with self.assertRaisesRegex(ValueError,'No restored data'):release_recovery(self.home)
 
     def test_restore_refuses_existing_destination_wrong_key_and_tampering(self):
         path=backup_stream(self.s)
