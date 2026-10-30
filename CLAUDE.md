@@ -2,16 +2,16 @@
 
 ## ブランチ運用（FreeBSD配置）
 
-配置先はFreeBSD 15.1 amd64（通常のFreeBSD）。MySQLは別マシンに置く（2026-10-30決定、ガイドC07）。
+配置先はFreeBSD 15.1 amd64（通常のFreeBSD）。MySQLは同じマシンに置く（127.0.0.1のみ）を主構成とする。組み込みだけで対応しきれなかった場合に備え、別マシン構成を`freebsd/mysql-remote`に保険として保存する。
 
 | ブランチ | 構成 | 資料 |
 |---|---|---|
-| `feat/offline-build-db-templates` | 基点（wheelhouse取得、ビルドworkflow、DB設定ひな形、FreeBSD対応）。別マシン構成の内容も含む | `docs/ガイド.md` |
-| `freebsd/mysql-remote` | MySQLを別マシンに置く（TLS＋証明書検証必須）。採用した構成 | `docs/ガイド.md` 4章 |
-| `freebsd/mysql-local` | MySQLを同じFreeBSDマシンに置く構成。**使わない**（取り込み・追加をしない。消さずに残す） | — |
+| `feat/offline-build-db-templates` | 両構成の共通基点（wheelhouse取得、ビルドworkflow、DB設定ひな形、FreeBSD共通対応） | `docs/ガイド.md` |
+| `freebsd/mysql-local` | 主構成。MySQLを同じFreeBSDマシンに置く（127.0.0.1のみ） | `docs/ガイド.md` 4章 |
+| `freebsd/mysql-remote` | 保険。MySQLを別マシンに置く（TLS＋証明書検証必須）。基点へ取り込まない | `docs/ガイド.md` 4章 |
 
 - 資料は`docs/ガイド.md`に集約する。例外は利用者の指示で分けた`docs/キャプティブポータル作成手順.md`（VyOS連携の作成・試験手順）のみ。それ以外の新しい.mdは増やさず、該当の章に追記する（README.mdは案内のみ、CLAUDE.mdは作業ルール）。
-- 変更は基点ブランチに入れ、`freebsd/mysql-remote`へ取り込む。`freebsd/mysql-local`へは取り込まない。
+- 両構成に共通する変更は基点ブランチに入れ、`mysql-local`へ取り込む。`mysql-remote`は保険なので、共通変更の取り込みは必要になったときに行い、`mysql-remote`側の変更を基点へ戻さない。構成固有の変更だけを各構成ブランチに入れる。
 - バイナリはFreeBSD上でビルドする（`docs/ガイド.md`）。Windows/Linux版はFreeBSDで動かない。
 - AP連携は未実装（adapter=disconnected）。本番値・承認状態の`false`を書き換えない。
 - 実際の接続情報・パスワード・鍵・wheelhouseをコミットしない。
