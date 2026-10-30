@@ -85,7 +85,7 @@
     if(name){$('heading').textContent=name+' Wi-Fi';$('heading').lang=languageCode()==='en'&&eventInfo.name_en?'en':eventInfo.name_ja?'ja':'en';document.title=name+' Wi-Fi';}else $('heading').lang=languageCode();
     if(renderedEventInfo!==eventInfo||renderedInformationLanguage!==$('language').value){
       const contact=eventInfo&&(languageCode()==='en'?(eventInfo.contact_en||eventInfo.contact_ja):(eventInfo.contact_ja||eventInfo.contact_en));
-      const dates=eventInfo?.period_confirmed&&eventInfo.service_start_utc&&eventInfo.service_end_utc?[eventInfo.service_start_utc,eventInfo.service_end_utc].map(v=>new Date(v).toLocaleString(languageCode()==='en'?'en-GB':'ja-JP',{timeZone:'Asia/Tokyo'})).join(' - ')+' JST':t.unconfirmed;
+      const dates=eventInfo?.period_confirmed&&eventInfo.service_start_utc&&eventInfo.service_end_utc?[eventInfo.service_start_utc,eventInfo.service_end_utc].map(v=>new Date(v).toLocaleString(languageCode()==='en'?'en-GB':'ja-JP',{timeZone:'Asia/Tokyo'})).join(' - ')+' JST'+(eventInfo.daily_service_hours?' / '+eventInfo.daily_service_hours.open+'-'+eventInfo.daily_service_hours.close:''):t.unconfirmed;
       const fragment=document.createDocumentFragment();
       for(const [label,value] of [[t.ssid,eventInfo?.ssid||t.unconfirmed],[t.period,dates],[t.contact,contact||t.unconfirmed]]){const a=document.createElement('dt'),b=document.createElement('dd');a.textContent=label;b.textContent=value;fragment.append(a,b);}
       $('event-info').replaceChildren(fragment);
@@ -114,7 +114,7 @@
       const info=await api('/v1/public?lang='+lang);
       const result=context&&!saved&&info.service_state==='local_only'?await api('/v1/contexts/'+context+'?lang='+lang):info;
       if(version!==generation)return;
-      eventInfo=info.event_information||null;terms=result.terms;$('terms').textContent=terms.text;$('terms').lang=terms.language;
+      eventInfo=info.event_information?{...info.event_information,daily_service_hours:info.daily_service_hours||null}:null;terms=result.terms;$('terms').textContent=terms.text;$('terms').lang=terms.language;
       ready=Boolean(context&&info.service_state==='local_only'&&!saved);
       state=ready?'ready':info.service_state==='service_closed'?'closed':info.service_state==='local_only'?'link':'stopped';
     }catch(error){if(version!==generation)return;lastFailure=error;state='error';$('terms').textContent=text().termsFailed;}
