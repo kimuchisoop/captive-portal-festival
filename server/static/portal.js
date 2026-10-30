@@ -19,6 +19,8 @@
   }
   let csrf,context,terms,ready=false,busy=false,saved=null,pending=null,unconfirmedStatus=false;
   let eventInfo=null,lastFailure=null,bootstrapFailure=null,retryAllowed=true,retryAt=0,retryTimer=null;
+  // Resume: a failure before any consent is sent on this page (session, link or terms) can be checked again without reloading.
+  let resumeFailure=null,resumeAt=0,resumeTimer=null,resuming=false;
   let renderedEventInfo,renderedInformationLanguage;
   let generation=0,state='loading',termsLoading=true;
   let copyBusy=false;
@@ -56,15 +58,25 @@
     else if(error.status===401||error.status===403||error.code==='context_not_found')message=t.errorBeforeConsent;
     else if(error.status===410||error.code==='service_closed')message=t.closed;
     else message=error.status?t.errorStaff:t.errorNetwork;
-    const wait=pending&&retryAllowed?Math.max(0,Math.ceil((retryAt-performance.now())/1000)):error.status===429?error.wait:null;
+    const left=at=>Math.max(0,Math.ceil((at-performance.now())/1000));
+    const wait=pending&&retryAllowed?left(retryAt):error===resumeFailure&&resumeAt?left(resumeAt):error.status===429?error.wait:null;
     return [message,wait?`${t.waitSeconds}: ${wait}`:'',error.correlation_id?`${t.correlation}: ${error.correlation_id}`:''].filter(Boolean).join(' ');
+  }
+  function retryable(error){
+    const blocked=['intake_disabled','service_closed','schema5_recovery_required','adapter_unavailable','session_capacity_exhausted'].includes(error.code);
+    return !blocked&&(error.status===0||error.status>=500||(['response_invalid','response_mismatch'].includes(error.code)&&error.status>=200&&error.status<300)||(error.status===429&&error.wait!==null));
   }
   function setRetry(error){
     clearTimeout(retryTimer);retryAt=0;
-    const blocked=['intake_disabled','service_closed','schema5_recovery_required','adapter_unavailable','session_capacity_exhausted'].includes(error.code);
-    retryAllowed=!blocked&&(error.status===0||error.status>=500||(['response_invalid','response_mismatch'].includes(error.code)&&error.status>=200&&error.status<300)||(error.status===429&&error.wait!==null));
+    retryAllowed=retryable(error);
     if(retryAllowed&&error.status===429&&error.wait){retryAt=performance.now()+error.wait*1000;retryTimer=setTimeout(render,error.wait*1000+100);}
   }
+  function setResume(error){
+    clearTimeout(resumeTimer);resumeAt=0;resumeFailure=error&&retryable(error)?error:null;
+    if(resumeFailure&&error.status===429&&error.wait){resumeAt=performance.now()+error.wait*1000;resumeTick();}
+  }
+  // Counts down once a second so the remaining wait stays accurate, then enables the button.
+  function resumeTick(){render();if(resumeFailure&&performance.now()<resumeAt)resumeTimer=setTimeout(resumeTick,Math.min(1000,resumeAt-performance.now()+50));}
   async function api(path,data,key,expected){
     const headers={'Content-Type':'application/json'};
     if(csrf)headers['X-CSRF-Token']=csrf;if(key)headers['Idempotency-Key']=key;
@@ -97,8 +109,10 @@
     $('connect').textContent=busy?t.saving:pending&&!saved?t.retryButton:t.button;
     const pendingText=pending&&!retryAllowed?t.errorPendingStaff:pending&&performance.now()<retryAt?t.errorWait:t.pending;
     const savedText=!network?t.saved:connection==='connected'?t.connected:!connection||connection==='connecting'?t.connecting:t.notConnected;
-    $('message').textContent=busy?t.saving:saved?savedText:pending?pendingText:t[state];
+    const resumeShown=Boolean(resumeFailure)&&!saved&&!pending;
+    $('message').textContent=busy?t.saving:saved?savedText:pending?pendingText:resuming?t.loading:resumeShown?t.resumeHelp:t[state];
     $('connect-help').textContent=busy?t.saving:saved?t.helpSaved:pending?pendingText:ready?t.helpReady:t.helpStopped;
+    $('resume').hidden=!resumeShown;$('resume').textContent=t.resumeButton;$('resume').disabled=busy||resuming||performance.now()<resumeAt;
     $('connect').disabled=!ready||!$('accepted').checked||busy||Boolean(saved)||Boolean(pending&&(!retryAllowed||performance.now()<retryAt));
     $('error-detail').hidden=!lastFailure||busy;$('error-detail').textContent=lastFailure&&!busy?failureText(lastFailure):'';
     $('leave-warning').hidden=!leaveRisk();$('leave-warning').textContent=t.leaveWarning;
@@ -121,8 +135,9 @@
       network=info.adapter==='vyos';
       eventInfo=info.event_information?{...info.event_information,daily_service_hours:info.daily_service_hours||null}:null;terms=result.terms;$('terms').textContent=terms.text;$('terms').lang=terms.language;
       ready=Boolean(context&&info.service_state==='local_only'&&!saved);
+      if(!bootstrapFailure)setResume(null);
       state=ready?'ready':info.service_state==='service_closed'?'closed':info.service_state==='local_only'?'link':'stopped';
-    }catch(error){if(version!==generation)return;lastFailure=error;state='error';$('terms').textContent=text().termsFailed;}
+    }catch(error){if(version!==generation)return;lastFailure=error;state='error';$('terms').textContent=text().termsFailed;if(!saved&&!pending&&!bootstrapFailure)setResume(error);}
     if(version===generation){termsLoading=false;render();}
   }
   $('language').addEventListener('change',language);
@@ -182,8 +197,15 @@
       }
       bootstrapFailure=null;
     }
-    catch(error){bootstrapFailure=error;lastFailure=error;state='error';}
+    catch(error){bootstrapFailure=error;lastFailure=error;state='error';setResume(error);}
     await language();
   }
+  $('resume').addEventListener('click',async()=>{
+    if(!resumeFailure||busy||resuming||saved||pending||performance.now()<resumeAt)return;
+    // Repeats only the step that failed. The context request keeps its idempotency key, and no consent is sent from here.
+    resuming=true;clearTimeout(resumeTimer);render();
+    try{if(bootstrapFailure)await init();else await language();}
+    finally{resuming=false;render();}
+  });
   render();init();
 })();
