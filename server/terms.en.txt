@@ -1,7 +1,54 @@
-School Festival Guest Wi-Fi — provisional local development terms
+Chukyo Toyota Gakusai Wi-Fi Terms of Use
 
-This shared network is intended for visitors' Internet access. Speed and continuous availability are not guaranteed. Service may be limited, interrupted or ended due to congestion or equipment conditions.
-Do not disrupt other users or equipment, access systems without authorization, or use the service unlawfully. Keep your device up to date and take care when handling sensitive information.
-The service records the consent time, terms version, language and a connection reference for operation. The official retention period and contact point must be announced before production use.
+1. Purpose
+These terms set out the conditions for using the wireless LAN service (the "Service") provided by Convivial Net (the "Organizer"). By indicating your agreement on this page and pressing the button to connect, you agree to these terms.
 
-These provisional terms require approval by the school before publication.
+2. Eligibility
+The Service is provided to:
+- Visitors to the Chukyo Toyota Gakusai (school festival)
+- Exhibiting groups and related staff
+- Others permitted by the Organizer
+
+3. Service hours and usage time
+- The Service is available from 10:00 to 17:00 on each event day. New connections are not accepted before opening.
+- Each consent allows 120 minutes of use from the time you agree. Access ends at 17:00 even if time remains (if you agree at or after 16:00, access lasts until 17:00).
+- To continue after your usage time ends, you may need to complete the steps on this page again.
+
+4. Service conditions
+- The Service is provided on a best-effort basis. Speed and continuous availability are not guaranteed.
+- Speed may drop when many people are connected.
+- You may be disconnected after a long period without traffic.
+- This is a shared network for visitors. It is for Internet access only and does not permit use of the school's internal systems or networks.
+- The Organizer may limit, interrupt or end the Service without notice due to congestion, equipment conditions, maintenance or safety reasons.
+
+5. Prohibited conduct
+When using the Service, you must not:
+- Act against the law or public order and morals
+- Infringe the rights of other users, third parties or the Organizer
+- Access systems without authorization, or prepare for or assist such access
+- Place excessive load on the network or equipment, or interfere with other users' communications
+- Send or spread computer viruses or other harmful programs
+- Impersonate others, or connect to the school's internal systems or networks without permission
+- Engage in any other conduct the Organizer considers inappropriate
+The Organizer may suspend your use without prior notice if such conduct is found.
+
+6. Your responsibilities
+- Keep your device up to date and secure at your own responsibility.
+- This is a shared network. Take care when handling confidential or important personal information.
+- You are responsible for resolving any dispute with a third party arising from your use of the Service.
+
+7. Information we record
+To prevent misuse and to operate the Service, the Organizer records:
+- The time of your consent, and the version and display language of the terms you agreed to
+- An identifier used to match your connection (such as your IP address) and connection logs
+The recorded information is stored in a database managed by the Organizer and can be viewed only by the Organizer's administrators. It is not provided to third parties without your consent, except as required by law.
+Records are not deleted automatically. The Organizer will set the retention period and announce it once decided.
+
+8. Disclaimer
+Except in cases of intent or gross negligence on its part, the Organizer is not liable for any damage arising from your use of, or inability to use, the Service (including data loss, device malfunction or leakage of communications).
+
+9. Changes to these terms
+The Organizer may change these terms as needed. Changed terms apply from the time they are shown on this page, and connecting after a change requires agreeing to the changed terms.
+
+10. Contact
+For questions about the Service, please ask the event staff at the venue.

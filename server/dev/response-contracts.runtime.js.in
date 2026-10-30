@@ -95,6 +95,10 @@
       if(parts.length===4&&value.export_id!==parts[3])return false;
       if(parts[4]==='events'&&!value.items.every(item=>item.export_id===parts[3]))return false;
     }
+    if(parts[2]==='consent-archive-exports'&&parts[4]==='approval'){
+      if(value.export_id!==parts[3])return false;
+      if(method==='POST'&&(value.rows_sha256!==data?.rows_sha256||!value.approval))return false;
+    }
     if(method==='POST'&&parts[2]==='backups'&&parts[4]==='checks'&&value.filename!==parts[3])return false;
     if(method==='GET'&&parts[2]==='checklists'){
       if(url.searchParams.has('day')&&value.day!==url.searchParams.get('day'))return false;

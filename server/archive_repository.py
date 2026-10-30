@@ -29,6 +29,52 @@ def archive_event(s,db,export_id,kind,actor_type,actor=None,evidence=None,page_s
     db.execute('INSERT INTO consent_archive_events VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                (uid(),export_id,kind,actor_type,actor,s.now(),uid(),page_start,page_end,page_sha,evidence))
 
+def load_any(db,export_id):
+    row=db.execute('SELECT * FROM consent_archive_exports WHERE id=?',(identifier(export_id),)).fetchone()
+    if not row:fail('export_not_found',404)
+    return row
+
+# A second person approves one fixed copy before any page is generated. Schema 5 has no
+# event kind for this, so the approval is a meta row (insert once, never deleted) plus audit.
+APPROVAL_PREFIX='consent_archive_approval_'
+
+def approval(db,row,snapshot):
+    if not snapshot:return None
+    meta=db.execute('SELECT value FROM meta WHERE name=?',(APPROVAL_PREFIX+row['id'],)).fetchone()
+    if not meta:return None
+    try:value=json.loads(meta['value'])
+    except ValueError:return None
+    if not isinstance(value,dict) or value.get('export_id')!=row['id'] or value.get('rows_sha256')!=snapshot['rows_sha256'] or type(value.get('approved_at')) is not int:return None
+    approver=value.get('approver_id')
+    if not isinstance(approver,str) or approver==row['owner_id']:return None
+    current=db.execute('SELECT enabled,role FROM admins WHERE id=?',(approver,)).fetchone()
+    if not current or not current['enabled'] or current['role'] not in ('records','settings'):return None
+    return value
+
+def public_approval(value):
+    return None if value is None else dict(approver_id=value['approver_id'],approved_at_utc=utc(value['approved_at']))
+
+def approval_view(s,db,row):
+    snapshot=db.execute('SELECT * FROM consent_archive_snapshots WHERE export_id=?',(row['id'],)).fetchone()
+    ready=ready_evidence(s,db,row,snapshot);owner=db.execute('SELECT username FROM admins WHERE id=?',(row['owner_id'],)).fetchone()
+    values=json.loads(row['filters_json']) if isinstance(row['filters_json'],(str,bytes)) else row['filters_json']
+    return dict(export_id=row['id'],owner_id=row['owner_id'],owner_username=owner['username'] if owner else None,filters=values,
+                created_at_utc=utc(row['created_at']),as_of_utc=utc(row['as_of']),ready=ready,
+                total_count=snapshot['item_count'] if ready else None,rows_sha256=snapshot['rows_sha256'] if ready else None,
+                approval=public_approval(approval(db,row,snapshot)) if ready else None)
+
+def approve(s,db,approver,export_id,rows_sha256):
+    owner_allowed(db,approver);row=load_any(db,export_id)
+    if row['owner_id']==approver:fail('export_self_approval',403)
+    snapshot=db.execute('SELECT * FROM consent_archive_snapshots WHERE export_id=?',(row['id'],)).fetchone()
+    if not ready_evidence(s,db,row,snapshot):fail('export_not_ready')
+    if rows_sha256!=snapshot['rows_sha256']:fail('export_approval_mismatch')
+    if db.execute('SELECT 1 FROM meta WHERE name=? FOR UPDATE',(APPROVAL_PREFIX+row['id'],)).fetchone():fail('export_already_approved')
+    value=dict(export_id=row['id'],approver_id=approver,approved_at=s.now(),rows_sha256=snapshot['rows_sha256'])
+    db.execute('INSERT INTO meta VALUES (?,?)',(APPROVAL_PREFIX+row['id'],canonical(value).decode()))
+    s.audit(db,approver,'consent_archive_approved',row['id'])
+    return row
+
 def load(db,owner,export_id):
     row=db.execute('SELECT * FROM consent_archive_exports WHERE id=? AND owner_id=?',(identifier(export_id),owner)).fetchone()
     if not row:fail('export_not_found',404)
@@ -77,7 +123,8 @@ def view(s,db,row,snapshot=False,generation_matches=None):
                      total_count=snapshot['item_count'],rows_sha256=snapshot['rows_sha256'],first_page_cursor=encode_cursor(s,'archive-content',row['owner_id'],0,snapshot_context(row,snapshot)),csv_columns=CSV_COLUMNS)
     values=json.loads(row['filters_json']) if isinstance(row['filters_json'],(str,bytes)) else row['filters_json']
     return dict(export_id=row['id'],owner_id=row['owner_id'],filters=values,filters_sha256=row['filters_sha256'],as_of_utc=utc(row['as_of']),created_at_utc=utc(row['created_at']),
-                state=row['state'],version=row['row_version'],retry_of=row['retry_of_id'],error_code=row['error_code'],snapshot=summary,effective_state=effective)
+                state=row['state'],version=row['row_version'],retry_of=row['retry_of_id'],error_code=row['error_code'],snapshot=summary,effective_state=effective,
+                approval=public_approval(approval(db,row,snapshot)) if ready else None)
 
 def item_data(row,as_of):
     return dict(consent_id=row['id'],source_seq=row['seq'],event_id=row['event_id'],terms_version=row['terms_version'],terms_sha256=row['terms_sha256'],

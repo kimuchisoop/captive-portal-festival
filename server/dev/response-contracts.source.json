@@ -5297,6 +5297,154 @@
       },
       "additionalProperties": true
     },
+    "GET /v1/admin/consent-archive-exports/<export_id>/approval": {
+      "type": "object",
+      "required": [
+        "export_id",
+        "owner_id",
+        "filters",
+        "ready",
+        "total_count",
+        "rows_sha256",
+        "approval"
+      ],
+      "properties": {
+        "export_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "owner_id": {
+          "type": "string"
+        },
+        "filters": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rows_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approval": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "approver_id",
+                "approved_at_utc"
+              ],
+              "properties": {
+                "approver_id": {
+                  "type": "string"
+                },
+                "approved_at_utc": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "POST /v1/admin/consent-archive-exports/<export_id>/approval": {
+      "type": "object",
+      "required": [
+        "export_id",
+        "owner_id",
+        "filters",
+        "ready",
+        "total_count",
+        "rows_sha256",
+        "approval"
+      ],
+      "properties": {
+        "export_id": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+        },
+        "owner_id": {
+          "type": "string"
+        },
+        "filters": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "total_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rows_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approval": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "approver_id",
+                "approved_at_utc"
+              ],
+              "properties": {
+                "approver_id": {
+                  "type": "string"
+                },
+                "approved_at_utc": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
     "GET /v1/admin/consent-archive-exports/<export_id>/content": null,
     "GET /v1/admin/workflow-alerts": {
       "type": "object",

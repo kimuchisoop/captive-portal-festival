@@ -69,6 +69,27 @@ def register(app,s,auth):
         return jsonify(items=[dict(event_id=r['id'],export_id=r['export_id'],kind=r['kind'],actor_type=r['actor_type'],actor_id=r['actor_id'],created_at_utc=utc(r['created_at']),
                                   correlation_id=r['correlation_id'],page_start=r['page_start'],page_end=r['page_end'],page_sha256=r['page_sha256'],evidence_code=r['evidence_code']) for r in rows],next_cursor=cursor)
 
+    # Another records/settings administrator reviews any owner's request by its number.
+    @app.get('/v1/admin/consent-archive-exports/<export_id>/approval')
+    @auth('admin','records')
+    def approval_review(export_id):
+        query(request.args,())
+        with s.db() as db:
+            archives.owner_allowed(db,g.session['owner_id'])
+            return jsonify(archives.approval_view(s,db,archives.load_any(db,export_id)))
+
+    @app.post('/v1/admin/consent-archive-exports/<export_id>/approval')
+    @auth('admin','records')
+    def approve(export_id):
+        data=request.get_json(silent=True)
+        if not isinstance(data,dict) or set(data)!={'rows_sha256'} or not isinstance(data['rows_sha256'],str):fail('invalid_fields',400)
+        with s.db(True) as db:
+            require_runtime_ready(s,db)
+            def action():
+                row=archives.approve(s,db,g.session['owner_id'],export_id,data['rows_sha256'])
+                return archives.approval_view(s,db,row),200,s.now()+86400
+            return s.idempotent(db,g.session['owner_id'],action)
+
     @app.get('/v1/admin/consent-archive-exports/<export_id>/content')
     @auth('admin','records')
     def content(export_id):
@@ -76,6 +97,7 @@ def register(app,s,auth):
         with s.db() as db:
             row=archives.load(db,owner,export_id);snapshot=db.execute('SELECT * FROM consent_archive_snapshots WHERE export_id=?',(export_id,)).fetchone()
             if not archives.ready_evidence(s,db,row,snapshot):fail('export_not_ready')
+            if not archives.approval(db,row,snapshot):fail('export_approval_required')
             after,expires=decode_cursor(s,args.get('cursor'),'archive-content',owner,archives.snapshot_context(row,snapshot))
             if type(after) is not int or not 0<=after<=snapshot['item_count']:fail('cursor_invalid',400)
             if after==0:
@@ -97,6 +119,7 @@ def register(app,s,auth):
         with s.db(True) as db:
             require_runtime_ready(s,db);s.require_admin_transaction(db,g.session,'records');archives.owner_allowed(db,owner);fresh=archives.load(db,owner,export_id)
             if not archives.ready_evidence(s,db,fresh,snapshot):fail('export_not_ready')
+            if not archives.approval(db,fresh,snapshot):fail('export_approval_required')
             start=after+1 if selected else after;end=selected[-1]['ordinal'] if selected else after
             archives.archive_event(s,db,export_id,'download_requested','admin',owner,page_start=start,page_end=end)
             archives.archive_event(s,db,export_id,'page_generated','admin',owner,page_start=start,page_end=end,page_sha=sha(result))
