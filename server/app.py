@@ -130,7 +130,7 @@ class Service:
         for k in ('admin_session_seconds', 'visitor_session_seconds', 'backup_interval_seconds', 'min_free_bytes'):
             if type(c.get(k)) is not int or c[k] <= 0:
                 raise ValueError(f'Invalid {k}')
-        if type(c.get('server_threads', 4)) is not int or not 1 <= c.get('server_threads', 4) <= 64:
+        if type(c.get('server_threads', 8)) is not int or not 1 <= c.get('server_threads', 8) <= 64:
             raise ValueError('Invalid server_threads')
         for k in ('db_warning_bytes','backup_warning_bytes'):
             value=c.get(k)

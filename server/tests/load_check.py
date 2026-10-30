@@ -2,7 +2,7 @@
 
 Usage: WIFI_TEST_MYSQL_CONFIG=<test config> python tests/load_check.py [visitors] [concurrency] [server_threads]
 
-The server runs as in production (waitress, server_threads from config, default 4) in a separate process. The session
+The server runs as in production (waitress, server_threads from config, default 8) in a separate process. The session
 admission limits in session_guard.py are lifted inside that process only, so the numbers show
 what the application and MySQL can process, not what the admission limits allow. Launch links
 are minted directly in the database here; on site they would come from the AP integration.
@@ -21,7 +21,7 @@ sys.argv=['manage.py','--home',{home!r},'serve']
 import manage;manage.main()
 '''
 
-def main(visitors=600,concurrency=32,server_threads=4):
+def main(visitors=600,concurrency=32,server_threads=8):
     home=Path(PreservedDirectory().name)/'load-data';init_home(home,sample=True)
     with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
     origin='http://127.0.0.1:'+str(port)
