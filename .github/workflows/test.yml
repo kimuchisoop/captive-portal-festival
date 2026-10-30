@@ -53,9 +53,12 @@ jobs:
           # Binlog stays on (MySQL 8 default); triggers need log_bin_trust_function_creators for non-SUPER accounts.
           docker run -d --name test-mysql -p 127.0.0.1:13308:3306 -e MYSQL_ROOT_PASSWORD="$root_password" \
             mysql:8.4 --log-bin-trust-function-creators=ON
-          for i in $(seq 1 60); do
-            docker exec test-mysql mysql -uroot -p"$root_password" -e 'SELECT 1' >/dev/null 2>&1 && break; sleep 2
+          # Check over TCP: the image's temporary init server answers on the socket only, then restarts.
+          ready=
+          for i in $(seq 1 90); do
+            docker exec test-mysql mysql --protocol=TCP -h127.0.0.1 -uroot -p"$root_password" -e 'SELECT 1' >/dev/null 2>&1 && ready=1 && break; sleep 2
           done
+          if [ -z "$ready" ]; then docker logs test-mysql 2>&1 | tail -50; echo "MySQL did not accept TCP connections in time" >&2; exit 1; fi
           docker exec test-mysql mysql -uroot -p"$root_password" -e \
             "CREATE USER 'test_maint'@'%' IDENTIFIED BY '$maint_password'; GRANT ALL PRIVILEGES ON *.* TO 'test_maint'@'%';"
           mkdir -p "$RUNNER_TEMP/mysql-test"
