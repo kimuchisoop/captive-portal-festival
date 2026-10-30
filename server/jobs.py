@@ -38,8 +38,16 @@ def housekeeping(s):
             if not db.execute("SELECT 1 FROM operations WHERE grant_id=? AND action='disconnect'", (grant['id'],)).fetchone():
                 db.execute('INSERT INTO operations VALUES (?,?,?,?,?,?,0,?,NULL,?,?)',
                            (uid(), grant['id'], 'disconnect', 'deadline_expired', 'worker', 'queued', now, uid(), grant['delete_after']))
-        # This release cannot act on a NAS. Mark the dependency failure, never simulate an ACK.
-        rows = db.execute("SELECT * FROM operations WHERE status='queued' AND next_attempt<=?", (now,)).fetchall()
+    network = getattr(s, 'network', None)
+    if network:
+        # Guest grants go to core-rt: expiry removals and retries the serve process could not finish.
+        from network_access import process_due
+        process_due(s)
+    with s.db(True) as db:
+        # Nothing else can act on a NAS. Mark the dependency failure, never simulate an ACK.
+        rows = db.execute("SELECT o.* FROM operations o LEFT JOIN grants g ON g.id=o.grant_id WHERE o.status='queued' AND o.next_attempt<=?"
+                          + (" AND (g.connection_ref IS NULL OR g.connection_ref NOT LIKE ?)" if network else ''),
+                          (now, 'ipv4:%') if network else (now,)).fetchall()
         for op in rows:
             db.execute("UPDATE operations SET status='failed',attempts=attempts+1,last_error_code='adapter_unavailable' WHERE id=?", (op['id'],))
             if op['action'] == 'disconnect':

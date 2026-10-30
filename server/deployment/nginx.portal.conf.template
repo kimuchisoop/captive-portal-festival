@@ -1,0 +1,71 @@
+# OPEN TEMPLATE for stage 3 (vyos_portal.enabled=true): guests are forwarded to the app.
+# Replace every __NAME__ and /CHANGE_ME/ by hand, then `nginx -t`. Not installed or rendered by any tool.
+# Use nginx.closed.conf (prepare-https) instead while vyos_portal is disabled or the go/no-go is "fallback".
+# __APP_PORT__ is the port of "origin" in config.json (http://127.0.0.1:PORT). Exactly one proxy, this one.
+map $uri $festival_route {
+    default other;
+    / portal;
+    /admin admin;
+    ~^/v1/admin/ admin_api;
+    ~^/v1/ visitor_api;
+    ~^/static/ static;
+}
+log_format festival_safe '$time_iso8601 status=$status method=$request_method route=$festival_route request_id=$request_id';
+# core-rt sends a guest's port-80 traffic here whatever the Host (OS login checks such as captive.apple.com),
+# so this is the default server: every plain-http request goes to the HTTPS consent page.
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    access_log /var/log/nginx/festival-portal-access.log festival_safe;
+    return 302 https://__PORTAL_HOSTNAME__/;
+}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name __PORTAL_HOSTNAME__;
+    access_log /var/log/nginx/festival-portal-access.log festival_safe;
+    ssl_certificate /CHANGE_ME/portal-chain.pem;
+    ssl_certificate_key /CHANGE_ME/portal-key.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    client_max_body_size 64k;
+    location = /admin { return 404; }
+    location ^~ /admin/ { return 404; }
+    location ^~ /v1/admin/ { return 404; }
+    location ^~ /health/ { return 404; }
+    location / {
+        proxy_pass http://127.0.0.1:__APP_PORT__;
+        # Replacement values, not appended chains: the app takes X-Forwarded-For as the guest address.
+        proxy_set_header Host __PORTAL_HOSTNAME__;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Forwarded "";
+        proxy_set_header X-Forwarded-Host "";
+        proxy_set_header X-Forwarded-Port "";
+        proxy_set_header X-Forwarded-Prefix "";
+        proxy_set_header X-Forwarded-Server "";
+    }
+}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name __ADMIN_HOSTNAME__;
+    access_log /var/log/nginx/festival-admin-access.log festival_safe;
+    ssl_certificate /CHANGE_ME/admin-chain.pem;
+    ssl_certificate_key /CHANGE_ME/admin-key.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    client_max_body_size 64k;
+    allow __MANAGEMENT_CIDR__;
+    deny all;
+    location / {
+        proxy_pass http://127.0.0.1:__APP_PORT__;
+        proxy_set_header Host __ADMIN_HOSTNAME__;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Forwarded "";
+        proxy_set_header X-Forwarded-Host "";
+        proxy_set_header X-Forwarded-Port "";
+        proxy_set_header X-Forwarded-Prefix "";
+        proxy_set_header X-Forwarded-Server "";
+    }
+}
