@@ -69,6 +69,8 @@ class VyosGatewayTests(unittest.TestCase):
             with self.assertRaises(GatewayRefused):VyosGateway('https://core-rt.example.test',*args)
         for timeout in (0,31,'5',True):
             with self.assertRaises(GatewayRefused):VyosGateway('https://core-rt.example.test',KEY,NETS,timeout=timeout)
+        for timeout in (0,31,'20',True):
+            with self.assertRaises(GatewayRefused):VyosGateway('https://core-rt.example.test',KEY,NETS,commit_timeout=timeout)
 
     def test_certificate_verification_on(self):
         router=FakeRouter();gateway(router,timeout=3).authorized()

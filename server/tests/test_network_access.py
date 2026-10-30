@@ -4,7 +4,7 @@ from pathlib import Path
 from urllib.error import URLError
 from urllib.parse import parse_qs
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT));sys.path.insert(0,str(ROOT/'.deps'))
-from network_access import validate,access_deadline,process_due,source_ref
+from network_access import validate,access_deadline,process_due,run_batch,source_ref,GATEWAY_COMMIT_TIMEOUT,LEASE
 from app import create_app,uid,timestamp,utc
 
 KEY='fixture-only-not-a-real-key'
@@ -18,8 +18,10 @@ class Answer(io.BytesIO):
 
 class FakeRouter:
     """Like VyOS: one request may carry a list of commands committed together; deleting a missing address fails."""
-    def __init__(self):self.members=set();self.commits=[];self.fail=None;self.lose_answer=False
+    def __init__(self):self.members=set();self.commits=[];self.timeouts=[];self.requests=[];self.fail=None;self.lose_answer=False
     def __call__(self,request,timeout,context):
+        self.timeouts.append(timeout)
+        self.requests.append((request.full_url.rsplit('/',1)[-1],timeout))
         if self.fail:raise self.fail
         if self.lose_answer and not request.full_url.endswith('/retrieve'):
             self.lose_answer=False;self.__call__(request,timeout,context).close();raise URLError('answer lost')
@@ -64,6 +66,10 @@ class Settings(unittest.TestCase):
         self.assertEqual(utc(access_deadline(s,timestamp('2026-10-31T01:00:00Z'))),'2026-10-31T03:00:00Z')  # 10:00 + 120 min
         s.config=dict(service_end_utc='2026-10-31T07:00:00Z',daily_service_hours=None)
         self.assertEqual(utc(access_deadline(s,now)),'2026-10-31T07:00:00Z')
+
+    def test_gateway_request_timeout_fits_inside_operation_lease(self):
+        self.assertEqual(GATEWAY_COMMIT_TIMEOUT,20)
+        self.assertLess(GATEWAY_COMMIT_TIMEOUT,LEASE)
 
 import os
 sys.path.insert(0,str(ROOT/'tests'))
@@ -115,6 +121,33 @@ class Flow(unittest.TestCase):
     def test_one_commit_for_many_consents(self):
         for n in range(5):self.consent('192.0.2.%d'%(20+n))
         self.assertEqual(process_due(self.s),5);self.assertEqual(len(self.router.commits),1);self.assertEqual(len(self.router.members),5)
+        self.assertEqual(set(self.router.timeouts),{GATEWAY_COMMIT_TIMEOUT})
+
+    def test_batch_sql_count_does_not_grow_with_consent_count(self):
+        from contextlib import contextmanager
+
+        def measured_run():
+            calls=[]; original=self.s.db
+            class Counted:
+                def __init__(self,db):self.db=db
+                def execute(self,sql,params=()):
+                    calls.append(sql);return self.db.execute(sql,params)
+                def __getattr__(self,name):return getattr(self.db,name)
+            @contextmanager
+            def measured(write=False):
+                with original(write) as db:yield Counted(db)
+            self.s.db=measured
+            try:run_batch(self.s)
+            finally:self.s.db=original
+            return len(calls)
+
+        self.consent('192.0.2.70')
+        one=measured_run()
+        self.assertLessEqual(one,8,one)
+        for n in range(71,84):self.consent('192.0.2.%d'%n)
+        many=measured_run()
+        self.assertEqual(many,one,(one,many))
+        self.assertEqual(len(self.router.commits),2)
 
     def test_address_checks(self):
         c=self.app.test_client();csrf=self.call(c,'post','/v1/session','198.51.100.7',{}).json['csrf_token']
@@ -159,6 +192,8 @@ class Flow(unittest.TestCase):
         process_due(self.s);self.assertEqual(self.router.members,{ip})
         r=self.call(admin,'post','/v1/admin/grants/'+new['grant_id']+'/revocations','192.0.2.99',dict(reason='operator_request'),csrf,origin=ADMIN)
         process_due(self.s);self.assertEqual(self.router.members,set())
+        self.assertIn(('retrieve',5),self.router.requests)
+        self.assertIn(('configure',GATEWAY_COMMIT_TIMEOUT),self.router.requests)
         overview=self.call(admin,'get','/v1/admin/overview','192.0.2.99',origin=ADMIN).json['counts']
         self.assertEqual((overview['network_authorized'],overview['network_failed']),(0,0))
 

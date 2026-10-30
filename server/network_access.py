@@ -17,6 +17,7 @@ FIELDS = {'enabled', 'api_origin', 'api_key_file', 'ca_file', 'guest_networks', 
 PREFIX = 'ipv4:'
 LOCK = 'festival_wifi_portal_authed'
 LEASE = 30              # a claimed operation is retried after this if its run never finished
+GATEWAY_COMMIT_TIMEOUT = 20  # leave ten seconds before the claimed-operation lease expires
 AUTHORIZE_ATTEMPTS = 3  # then the visitor sees "not connected" and staff are notified
 ALLOW_RETRY = 5
 REVOKE_RETRY = 30
@@ -91,7 +92,8 @@ class NetworkAccess:
         self.s, self.settings = s, settings
         key = (s.home / settings['api_key_file']).read_text(encoding='utf-8').strip()
         ca = str(s.home / settings['ca_file']) if settings['ca_file'] else None
-        self.gateway = VyosGateway(settings['api_origin'], key, [str(n) for n in settings['guest_networks']], ca_file=ca)
+        self.gateway = VyosGateway(settings['api_origin'], key, [str(n) for n in settings['guest_networks']],
+                                   ca_file=ca, commit_timeout=GATEWAY_COMMIT_TIMEOUT)
         self.wakeup = threading.Event()
         self.thread = None
         self.background = True
@@ -124,9 +126,17 @@ def error_code(error):
             else 'gateway_unavailable')
 
 
-def still_authorized(db, ref, grant_id, now):
-    return db.execute("SELECT 1 FROM grants WHERE connection_ref=? AND id<>? AND (authorization_status='pending' OR "
-                      "(authorization_status='accepted' AND original_expires_at>?)) LIMIT 1", (ref, grant_id, now)).fetchone() is not None
+def _marks(rows):
+    return ','.join('?' for _ in rows)
+
+
+def _ids(rows, key='id'):
+    return [r[key] for r in rows]
+
+
+def _update_ids(db, sql, rows, values=()):
+    if rows:
+        db.execute(sql.format(marks=_marks(rows)), (*values, *_ids(rows)))
 
 
 def process_due(s):
@@ -159,21 +169,27 @@ def run_batch(s):
         rows = db.execute("SELECT o.id,o.grant_id,o.action,o.attempts,g.connection_ref,g.authorization_status FROM operations o "
                           "JOIN grants g ON g.id=o.grant_id WHERE o.status='queued' AND o.next_attempt<=? AND g.connection_ref LIKE ? "
                           "ORDER BY o.next_attempt LIMIT " + str(BATCH) + " FOR UPDATE", (now, PREFIX + '%')).fetchall()
-        for r in rows:
-            db.execute('UPDATE operations SET attempts=attempts+1,next_attempt=? WHERE id=?', (now + LEASE, r['id']))
+        _update_ids(db, 'UPDATE operations SET attempts=attempts+1,next_attempt=? WHERE id IN ({marks})', rows, (now + LEASE,))
     if not rows:
         return 0, False
     gateway = s.network.gateway
-    done = lambda db, r, code=None: db.execute("UPDATE operations SET status='confirmed',last_error_code=? WHERE id=?", (code, r['id']))
-
     # Removals first, so a device that consented again in the same batch is added back right after.
+    disconnects = [r for r in rows if r['action'] == 'disconnect']
+    refs = list(dict.fromkeys(r['connection_ref'] for r in disconnects))
+    active = {}
+    if refs:
+        with s.db() as db:
+            found = db.execute("SELECT id,connection_ref FROM grants WHERE connection_ref IN (" + _marks(refs) +
+                               ") AND (authorization_status='pending' OR (authorization_status='accepted' AND original_expires_at>?))",
+                               (*refs, now)).fetchall()
+        for grant in found:
+            active.setdefault(grant['connection_ref'], set()).add(grant['id'])
     removals = []
-    with s.db() as db:
-        for r in (r for r in rows if r['action'] == 'disconnect'):
-            if still_authorized(db, r['connection_ref'], r['grant_id'], now):
-                r['kept'] = True
-            else:
-                removals.append(r)
+    for r in disconnects:
+        if active.get(r['connection_ref'], set()) - {r['grant_id']}:
+            r['kept'] = True
+        else:
+            removals.append(r)
     keep = [r for r in rows if r.get('kept')]
     failure = None
     if removals:
@@ -182,15 +198,16 @@ def run_batch(s):
         except GatewayError as error:
             failure = error
     with s.db(True) as db:
-        for r in keep:
-            done(db, r, 'still_authorized')
-            db.execute("UPDATE grants SET revocation_state='confirmed',row_version=row_version+1 WHERE id=?", (r['grant_id'],))
-        for r in removals:
-            if failure is None:
-                done(db, r)
-                db.execute("UPDATE grants SET revocation_state='confirmed',row_version=row_version+1 WHERE id=?", (r['grant_id'],))
-            else:
-                db.execute('UPDATE operations SET next_attempt=?,last_error_code=? WHERE id=?', (now + REVOKE_RETRY, error_code(failure), r['id']))
+        _update_ids(db, "UPDATE operations SET status='confirmed',last_error_code='still_authorized' WHERE id IN ({marks})", keep)
+        keep_grants = [{'id': r['grant_id']} for r in keep]
+        _update_ids(db, "UPDATE grants SET revocation_state='confirmed',row_version=row_version+1 WHERE id IN ({marks})", keep_grants)
+        if failure is None:
+            _update_ids(db, "UPDATE operations SET status='confirmed',last_error_code=NULL WHERE id IN ({marks})", removals)
+            remove_grants = [{'id': r['grant_id']} for r in removals]
+            _update_ids(db, "UPDATE grants SET revocation_state='confirmed',row_version=row_version+1 WHERE id IN ({marks})", remove_grants)
+        else:
+            _update_ids(db, 'UPDATE operations SET next_attempt=?,last_error_code=? WHERE id IN ({marks})', removals,
+                        (now + REVOKE_RETRY, error_code(failure)))
         stuck = failure is not None and any(r['attempts'] + 1 >= 3 for r in removals)
         if removals and (stuck or failure is None):
             notify(db, now, 'portal_revoke_failed', '期限切れ・解除した端末をcore-rtの許可済みグループから外せていません。core-rtへの接続とAPIキーを確認してください。'
@@ -213,30 +230,53 @@ def run_batch(s):
             failure = error
     final = []
     with s.db(True) as db:
-        for r in adds:
-            if r not in waiting:
-                done(db, r, 'not_needed')
-        for r in allowed if failure is None else []:
-            changed = db.execute("UPDATE grants SET authorization_status='accepted',authorized_at=?,original_expires_at=?,row_version=row_version+1 "
-                                 "WHERE id=? AND authorization_status='pending'", (now, access_deadline(s, now), r['grant_id'])).rowcount
-            done(db, r)
-            if not changed:
-                # Revoked while the router was adding it: run the removal again now that the address is in the group.
-                db.execute("UPDATE operations SET status='queued',next_attempt=? WHERE grant_id=? AND action='disconnect'", (now, r['grant_id']))
-        for r in refused + (allowed if failure is not None else []):
-            if r in refused or r['attempts'] + 1 >= AUTHORIZE_ATTEMPTS:
-                code = 'gateway_refused' if r in refused else error_code(failure)
-                db.execute("UPDATE operations SET status='failed',last_error_code=? WHERE id=?", (code, r['id']))
-                changed = db.execute("UPDATE grants SET authorization_status='rejected',row_version=row_version+1 WHERE id=? AND authorization_status='pending'", (r['grant_id'],)).rowcount
-                if changed and isinstance(failure, GatewayUnavailable) and r not in refused and not db.execute(
-                        "SELECT 1 FROM operations WHERE grant_id=? AND action='disconnect'", (r['grant_id'],)).fetchone():
-                    # No answer is not "not added": the commit may have reached core-rt, so remove the address to be sure.
-                    db.execute("UPDATE grants SET revocation_state='queued',row_version=row_version+1 WHERE id=?", (r['grant_id'],))
+        not_needed = [r for r in adds if r not in waiting]
+        _update_ids(db, "UPDATE operations SET status='confirmed',last_error_code='not_needed' WHERE id IN ({marks})", not_needed)
+        if allowed and failure is None:
+            deadline = access_deadline(s, now)
+            grant_ids = [r['grant_id'] for r in allowed]
+            marks = _marks(grant_ids)
+            db.execute("UPDATE grants SET authorization_status='accepted',authorized_at=?,original_expires_at=?,row_version=row_version+1 "
+                       f"WHERE id IN ({marks}) AND authorization_status='pending'", (now, deadline, *grant_ids))
+            _update_ids(db, "UPDATE operations SET status='confirmed',last_error_code=NULL WHERE id IN ({marks})", allowed)
+            current = {r['id']: r['authorization_status'] for r in db.execute(
+                f'SELECT id,authorization_status FROM grants WHERE id IN ({marks})', tuple(grant_ids)).fetchall()}
+            stale = [r for r in allowed if current.get(r['grant_id']) != 'accepted']
+            if stale:
+                grant_ids = [r['grant_id'] for r in stale]
+                marks = _marks(grant_ids)
+                db.execute(f"UPDATE operations SET status='queued',next_attempt=? WHERE action='disconnect' AND grant_id IN ({marks})",
+                           (now, *grant_ids))
+        failed = refused + (allowed if failure is not None else [])
+        final = [r for r in failed if r in refused or r['attempts'] + 1 >= AUTHORIZE_ATTEMPTS]
+        retry = [r for r in failed if r not in final]
+        if refused:
+            _update_ids(db, "UPDATE operations SET status='failed',last_error_code='gateway_refused' WHERE id IN ({marks})", refused)
+            refused_grants = [{'id': r['grant_id']} for r in refused]
+            _update_ids(db, "UPDATE grants SET authorization_status='rejected',row_version=row_version+1 WHERE id IN ({marks}) AND authorization_status='pending'", refused_grants)
+        failed_gateway = [r for r in final if r not in refused]
+        if failed_gateway:
+            code = error_code(failure)
+            _update_ids(db, 'UPDATE operations SET status=\'failed\',last_error_code=? WHERE id IN ({marks})', failed_gateway, (code,))
+            failed_grants = [{'id': r['grant_id']} for r in failed_gateway]
+            pending_ids = [r['id'] for r in db.execute(
+                f"SELECT id FROM grants WHERE id IN ({_marks(failed_grants)}) AND authorization_status='pending'",
+                tuple(_ids(failed_grants))).fetchall()]
+            _update_ids(db, "UPDATE grants SET authorization_status='rejected',row_version=row_version+1 WHERE id IN ({marks}) AND authorization_status='pending'", failed_grants)
+            if isinstance(failure, GatewayUnavailable) and pending_ids:
+                # An unacknowledged commit may have reached core-rt; queue cleanup for every unconfirmed address.
+                pending = [{'id': grant_id} for grant_id in pending_ids]
+                _update_ids(db, "UPDATE grants SET revocation_state='queued',row_version=row_version+1 WHERE id IN ({marks})", pending)
+                existing = {r['grant_id'] for r in db.execute(
+                    f"SELECT grant_id FROM operations WHERE action='disconnect' AND grant_id IN ({_marks(pending_ids)})",
+                    tuple(pending_ids)).fetchall()}
+                for r in failed_gateway:
+                    if r['grant_id'] not in pending_ids or r['grant_id'] in existing:continue
                     db.execute('INSERT INTO operations VALUES (?,?,?,?,?,?,0,?,NULL,?,?)',
                                (uid(), r['grant_id'], 'disconnect', 'allow_unconfirmed', 'worker', 'queued', now, uid(), grant_deadline(db, r['grant_id'])))
-                final.append(r)
-            else:
-                db.execute('UPDATE operations SET next_attempt=?,last_error_code=? WHERE id=?', (now + ALLOW_RETRY, error_code(failure), r['id']))
+        if retry:
+            _update_ids(db, 'UPDATE operations SET next_attempt=?,last_error_code=? WHERE id IN ({marks})', retry,
+                        (now + ALLOW_RETRY, error_code(failure)))
         if final:
             notify(db, now, 'portal_allow_failed', '同意した端末をcore-rtの許可済みグループへ追加できませんでした。来場者の画面は「つながっていません」です。'
                    'core-rtへの接続とAPIキーを確認し、端末には同意し直してもらってください。', True, severity='critical')
