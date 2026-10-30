@@ -11,7 +11,9 @@ def validate_transport(config):
     if not isinstance(data,dict) or set(data)!=FIELDS or type(data['enabled']) is not bool:
         raise ValueError('Invalid HTTPS transport settings')
     if not data['enabled']: return data
-    if config.get('local_intake_enabled') is not False:
+    # Guests are only taken over HTTPS when core-rt actually releases them (vyos_portal); otherwise preparation only.
+    portal=config.get('vyos_portal')
+    if config.get('local_intake_enabled') is not False and not (isinstance(portal,dict) and portal.get('enabled') is True):
         raise ValueError('HTTPS preparation requires intake disabled')
     for name in ('portal_origin','admin_origin'):
         value=data[name]

@@ -139,7 +139,9 @@
         "authorization_status",
         "revocation_state",
         "revoked_at",
-        "row_version"
+        "row_version",
+        "authorized_at",
+        "original_expires_at"
       ],
       "delete": false,
       "delete_reason": null,
@@ -149,7 +151,8 @@
         "jobs.py:220",
         "jobs.py:38",
         "jobs.py:47",
-        "stream_backup.py:123"
+        "stream_backup.py:123",
+        "network_access.py:run_batch"
       ]
     },
     {
@@ -159,7 +162,8 @@
       "update_columns": [
         "status",
         "attempts",
-        "last_error_code"
+        "last_error_code",
+        "next_attempt"
       ],
       "delete": false,
       "delete_reason": null,
@@ -168,7 +172,8 @@
         "jobs.py:221",
         "jobs.py:40",
         "jobs.py:45",
-        "stream_backup.py:124"
+        "stream_backup.py:124",
+        "network_access.py:run_batch"
       ]
     },
     {

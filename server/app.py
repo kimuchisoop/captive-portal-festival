@@ -81,6 +81,9 @@ class Service:
         self.clock = clock
         self.term_text = {lang: (self.home / f'terms.{lang}.txt').read_text(encoding='utf-8') for lang in ('ja', 'en')}
         self.validate_config()
+        from network_access import NetworkAccess
+        self.network = NetworkAccess(self, self.network_settings) if self.network_settings else None
+        self.adapter_name = 'vyos' if self.network else 'disconnected'
         with self.db() as db:
             version = db.execute("SELECT value FROM meta WHERE name='schema_version'").fetchone()
             if version is None or version[0] != '5':
@@ -110,6 +113,8 @@ class Service:
             raise ValueError('Automatic deletion is disabled by the operator instruction')
         from transport import validate_transport
         self.transport=validate_transport(c)
+        from network_access import validate as validate_network
+        self.network_settings=validate_network(c,self.home)
         if c.get('backup_format') != 'stream-v2':
             raise ValueError('Unsupported backup format')
         workflow=c.get('workflow_policy')
@@ -288,11 +293,23 @@ class Service:
         if r['last_observed_at'] is not None and self.now() - r['last_observed_at'] >= 30:
             obs = 'stale'
         display = 'revoked' if auth == 'revoked' else 'expired' if auth == 'expired' else 'rejected' if auth == 'rejected' else 'waiting_auth'
-        # No adapter exists: an accepted DB row is never sufficient evidence for connected.
+        # Without core-rt an accepted DB row is never sufficient evidence for connected. With it, accepted means
+        # core-rt confirmed the address in PORTAL-AUTHED; only guest grants ('ipv4:') are ever sent there.
+        guest = bool(self.network) and r['connection_ref'].startswith('ipv4:')
+        verified = guest and auth == 'accepted'
+        if guest:
+            display = 'connected' if verified else 'connecting' if auth == 'pending' else display
         return dict(grant_id=r['id'], consent_id=r['consent_id'], authorization_status=auth,
                     observation_state=obs, revocation_state=r['revocation_state'], display_state=display,
                     original_expires_at_utc=utc(r['original_expires_at']) if r['original_expires_at'] else None,
-                    network_verified=False, adapter=self.adapter_name)
+                    network_verified=verified, adapter=self.adapter_name)
+
+    def guest_ref(self):
+        """'ipv4:<address>' of the visitor's device as core-rt sees it, or None outside the guest networks."""
+        if not self.network:
+            return None
+        from network_access import source_ref
+        return source_ref(self.network.settings, request.remote_addr)
 
 
 def create_app(home, clock=time.time):
@@ -395,9 +412,17 @@ def create_app(home, clock=time.time):
 
     @app.get('/capport/api')
     def capport():
-        # RFC 8908 Captive Portal API. Without AP integration no client is ever released, so every client stays captive.
+        # RFC 8908 Captive Portal API. Without core-rt integration no client is ever released, so every client stays captive.
         from transport import request_origin
-        response = jsonify({'captive': True, 'user-portal-url': request_origin(s.config, '/') + '/'})
+        value = {'captive': True, 'user-portal-url': request_origin(s.config, '/') + '/'}
+        ref = s.guest_ref()
+        if ref:
+            with s.db() as db:
+                row = db.execute("SELECT max(original_expires_at) AS until FROM grants WHERE connection_ref=? AND authorization_status='accepted' AND original_expires_at>?",
+                                 (ref, s.now())).fetchone()
+            if row and row['until']:
+                value.update({'captive': False, 'seconds-remaining': int(row['until']) - s.now()})
+        response = jsonify(value)
         response.content_type = 'application/captive+json'
         return response
 
@@ -407,7 +432,7 @@ def create_app(home, clock=time.time):
 
     @app.get('/health/live')
     def live():
-        return jsonify(status='alive', production_enabled=False, adapter='disconnected')
+        return jsonify(status='alive', production_enabled=False, adapter=s.adapter_name)
 
     @app.get('/health/ready')
     def ready():
@@ -436,7 +461,7 @@ def create_app(home, clock=time.time):
         except ApiError as e:
             state = e.code
         from event_information import public as display_information
-        return jsonify(mode='local', production_enabled=False, service_state=state, adapter='disconnected', terms=s.public_terms(lang),event_information=display_information(s.config),daily_service_hours=s.config.get('daily_service_hours'))
+        return jsonify(mode='local', production_enabled=False, service_state=state, adapter=s.adapter_name, terms=s.public_terms(lang),event_information=display_information(s.config),daily_service_hours=s.config.get('daily_service_hours'))
 
     @app.route('/v1/admin/session', methods=['GET', 'POST'])
     @app.post('/v1/session')
@@ -523,8 +548,23 @@ def create_app(home, clock=time.time):
     @app.post('/v1/contexts')
     @auth()
     def contexts():
-        s.intake()
         data = body(('launch_ref',))
+        if data['launch_ref'] is None:
+            # Guests redirected by core-rt have no per-visitor link; the device is told apart by its address.
+            if not s.network:
+                raise ApiError('source_entry_unavailable', 403)
+            s.intake()
+            ref = s.guest_ref()
+            if not ref:
+                raise ApiError('source_outside_guest', 403, 'ゲストWi-Fiの端末として確認できません。Wi-Fiにつなぎ直すか、運営スタッフへお声がけください。')
+            with s.db(True) as db:
+                def from_source():
+                    context = uid()
+                    deadline = min(s.now() + 300, timestamp(s.config['service_end_utc']))
+                    db.execute('INSERT INTO contexts VALUES (?,?,?,?)', (context, g.session['owner_id'], ref, deadline))
+                    return {'context_id': context, 'mode': 'local'}, 201, deadline
+                return s.idempotent(db, g.session['owner_id'], from_source)
+        s.intake()
         if not isinstance(data['launch_ref'], str) or len(data['launch_ref']) > 128:
             raise ApiError('launch_invalid', 403)
         with s.db(True) as db:
@@ -577,9 +617,15 @@ def create_app(home, clock=time.time):
                                (d['context_id'], g.session['owner_id'], s.now())).fetchone()
                 if not c:
                     raise ApiError('context_not_found', 404)
-                # Contexts cannot create multiple grants using different retry keys.
-                existing = db.execute('SELECT * FROM grants WHERE owner_id=? AND connection_ref=?',
-                                      (g.session['owner_id'], c['connection_ref'])).fetchone()
+                guest = c['connection_ref'].startswith('ipv4:')
+                if guest and c['connection_ref'] != s.guest_ref():
+                    # core-rt releases the address the context was opened from; another address must open its own page.
+                    raise ApiError('source_changed', 409, 'Wi-Fiの接続が変わりました。画面を開き直してください。')
+                # Contexts cannot create multiple grants using different retry keys. A guest may consent again
+                # once the earlier grant has ended (expired, revoked or not connected).
+                existing = db.execute('SELECT * FROM grants WHERE owner_id=? AND connection_ref=?' + (
+                                      " AND (authorization_status='pending' OR (authorization_status='accepted' AND original_expires_at>?))" if guest else ''),
+                                      (g.session['owner_id'], c['connection_ref']) + ((s.now(),) if guest else ())).fetchone()
                 if existing:
                     saved = db.execute('SELECT * FROM consents WHERE id=?', (existing['consent_id'],)).fetchone()
                     if (saved['language'], saved['terms_sha256'], saved['policy_version']) != (d['language'], t['sha256'], t['policy_version']):
@@ -598,7 +644,10 @@ def create_app(home, clock=time.time):
                 r = s.status(db.execute('SELECT * FROM grants WHERE id=?', (grant_id,)).fetchone())
                 r['operation_id'] = op
                 return r, 201, deadline
-            return s.idempotent(db, g.session['owner_id'], action)
+            result = s.idempotent(db, g.session['owner_id'], action)
+        if s.network:
+            s.network.wake()
+        return result
 
     def owned_grant(grant_id):
         with s.db() as db:
@@ -626,6 +675,12 @@ def create_app(home, clock=time.time):
             counts = {table: db.execute('SELECT count(*) FROM ' + table).fetchone()[0]
                       for table in ('consents', 'grants')}
             counts['unconfirmed'] = db.execute("SELECT count(*) FROM operations WHERE status NOT IN ('confirmed')").fetchone()[0]
+            if s.network:
+                # Devices core-rt currently lets through, and guest operations that failed or are being retried.
+                counts['network_authorized'] = db.execute("SELECT count(DISTINCT connection_ref) FROM grants WHERE authorization_status='accepted' AND original_expires_at>? AND connection_ref LIKE ?",
+                                                          (s.now(), 'ipv4:%')).fetchone()[0]
+                counts['network_failed'] = db.execute("SELECT count(*) FROM operations o JOIN grants g ON g.id=o.grant_id WHERE g.connection_ref LIKE ? AND (o.status='failed' OR (o.status='queued' AND o.last_error_code IS NOT NULL))",
+                                                      ('ipv4:%',)).fetchone()[0]
             jobs = db.execute("SELECT value FROM meta WHERE name='last_job_at'").fetchone()
             backup = db.execute("SELECT value FROM meta WHERE name='last_backup_at'").fetchone()
         checked_at=s.now()
@@ -635,7 +690,7 @@ def create_app(home, clock=time.time):
             intake = 'local_only'
         except ApiError as e:
             intake = e.code
-        return jsonify(mode='local', production_enabled=False, adapter='disconnected', counts=counts,
+        return jsonify(mode='local', production_enabled=False, adapter=s.adapter_name, counts=counts,
                        server_now_utc=utc(checked_at),session_expires_at_utc=utc(g.session['expires_at']),
                        user=g.session['admin'], service_state=intake, last_job_at_utc=worker['last_success_utc'],
                        worker_stale=worker['stale'],
@@ -677,7 +732,10 @@ def create_app(home, clock=time.time):
                 op = s.operation(db, grant_id, 'disconnect', d['reason'], g.session['owner_id'], row['delete_after'])
                 s.audit(db, g.session['owner_id'], 'revoke_requested', grant_id)
                 return {'operation_id': op, 'network_verified': False}, 202, row['delete_after']
-            return s.idempotent(db, g.session['owner_id'], action)
+            result = s.idempotent(db, g.session['owner_id'], action)
+        if s.network:
+            s.network.wake()
+        return result
 
     @app.get('/v1/admin/operations/<operation_id>')
     @auth('admin', 'operate')

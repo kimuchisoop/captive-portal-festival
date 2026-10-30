@@ -2,7 +2,9 @@
 (() => {
   const $=id=>document.getElementById(id),copy=window.PortalCopy;
   const languageCode=()=> $('language').value==='en'?'en':'ja';
-  const text=()=>copy[$('language').value]||copy.ja;
+  // network: core-rt releases this device after consent (adapter 'vyos'), so the local-review wording does not apply.
+  let network=false,connection=null,connectedUntil=null;
+  const text=()=>{const base=copy[$('language').value]||copy.ja;if(!network)return base;const extra=window.PortalNetworkCopy;return {...base,...(extra[$('language').value]||extra.ja)};};
   const launch=new URLSearchParams(location.hash.slice(1)).get('local_launch');
   if(location.hash)history.replaceState(null,'',location.pathname);
   window.addEventListener('hashchange',()=>{
@@ -77,7 +79,7 @@
     return result;
   }
   function render(){
-    const t=text();document.documentElement.lang=languageCode();document.title=t.title+' · '+(languageCode()==='en'?'Local review':'ローカル確認版');
+    const t=text();document.documentElement.lang=languageCode();document.title=t.title+(network?'':' · '+(languageCode()==='en'?'Local review':'ローカル確認版'));
     const map={'heading':'title','subtitle':'subtitle','local-notice':'notice','admin-link':'admin','footer':'footer','skip-link':'skip','terms-heading':'termsHeading','terms-help':'termsHelp','agreement':'agreement','text-standard':'standard','text-large':'large','contrast-standard':'contrastNormal','contrast-high':'contrastHigh','text-size-label':'size','contrast-label':'contrast','portal-help-title':'helpTitle','portal-help-text':'helpText'};
     for(const [id,key] of Object.entries(map))$(id).textContent=t[key];
     $('event-info-title').textContent=t.infoTitle;
@@ -94,7 +96,8 @@
     $('simple-note').textContent=$('language').value==='ja-easy'?t.simpleNote:'';$('simple-note').hidden=$('language').value!=='ja-easy';
     $('connect').textContent=busy?t.saving:pending&&!saved?t.retryButton:t.button;
     const pendingText=pending&&!retryAllowed?t.errorPendingStaff:pending&&performance.now()<retryAt?t.errorWait:t.pending;
-    $('message').textContent=busy?t.saving:saved?t.saved:pending?pendingText:t[state];
+    const savedText=!network?t.saved:connection==='connected'?t.connected:!connection||connection==='connecting'?t.connecting:t.notConnected;
+    $('message').textContent=busy?t.saving:saved?savedText:pending?pendingText:t[state];
     $('connect-help').textContent=busy?t.saving:saved?t.helpSaved:pending?pendingText:ready?t.helpReady:t.helpStopped;
     $('connect').disabled=!ready||!$('accepted').checked||busy||Boolean(saved)||Boolean(pending&&(!retryAllowed||performance.now()<retryAt));
     $('error-detail').hidden=!lastFailure||busy;$('error-detail').textContent=lastFailure&&!busy?failureText(lastFailure):'';
@@ -106,7 +109,8 @@
     $('accepted').disabled=!ready||busy||Boolean(saved);$('language').disabled=busy||Boolean(pending&&!saved);
     $('consent-step').setAttribute('aria-busy',String(busy));$('terms').setAttribute('aria-busy',String(termsLoading));
     if(terms)$('version').textContent=t.version+': '+(terms.version||t.unconfigured);
-    if(saved)$('detail').textContent=`${t.receipt}: ${saved.id}\n${t.savedVersion}: ${saved.version} / ${saved.language}${unconfirmedStatus?'\n'+t.statusNote:''}`;
+    const until=network&&connection==='connected'&&connectedUntil?`\n${t.expires}: ${new Date(connectedUntil).toLocaleString(languageCode()==='en'?'en-GB':'ja-JP',{timeZone:'Asia/Tokyo'})}`:'';
+    if(saved)$('detail').textContent=`${t.receipt}: ${saved.id}\n${t.savedVersion}: ${saved.version} / ${saved.language}${until}${unconfirmedStatus?'\n'+t.statusNote:''}`;
   }
   async function language(){
     const version=++generation,lang=languageCode();ready=false;termsLoading=true;if(!saved)lastFailure=bootstrapFailure;$('accepted').checked=Boolean(saved);state='loading';render();$('terms').textContent=text().loadingTerms;
@@ -114,6 +118,7 @@
       const info=await api('/v1/public?lang='+lang);
       const result=context&&!saved&&info.service_state==='local_only'?await api('/v1/contexts/'+context+'?lang='+lang):info;
       if(version!==generation)return;
+      network=info.adapter==='vyos';
       eventInfo=info.event_information?{...info.event_information,daily_service_hours:info.daily_service_hours||null}:null;terms=result.terms;$('terms').textContent=terms.text;$('terms').lang=terms.language;
       ready=Boolean(context&&info.service_state==='local_only'&&!saved);
       state=ready?'ready':info.service_state==='service_closed'?'closed':info.service_state==='local_only'?'link':'stopped';
@@ -135,13 +140,25 @@
     try{
       const result=await api('/v1/consents',pending,retryKey);
       saved={id:result.consent_id,version:terms.version,language:pending.language};ready=false;
-      try{await api('/v1/grants/'+result.grant_id,undefined,undefined,{consent_id:result.consent_id});}catch(error){unconfirmedStatus=true;lastFailure=error;}
+      try{grantStatus(await api('/v1/grants/'+result.grant_id,undefined,undefined,{consent_id:result.consent_id}));}catch(error){unconfirmedStatus=true;lastFailure=error;}
       pending=null;clearTimeout(retryTimer);retryAt=0;
+      if(network&&connection==='connecting')follow(result);
     }catch(error){
       // Retain the exact payload and retry key after an uncertain write. Never create a new consent to hide an error.
       lastFailure=error;setRetry(error);state='pending';
     }finally{busy=false;render();}
   });
+  function grantStatus(value){connection=value.display_state;connectedUntil=value.original_expires_at_utc;}
+  async function follow(result){
+    // core-rt adds devices in batches about a second apart; stop asking after half a minute.
+    for(let i=0;i<20&&connection==='connecting';i++){
+      await new Promise(resolve=>setTimeout(resolve,1500));
+      try{grantStatus(await api('/v1/grants/'+result.grant_id,undefined,undefined,{consent_id:result.consent_id}));unconfirmedStatus=false;lastFailure=null;}
+      catch(error){unconfirmedStatus=true;lastFailure=error;}
+      render();
+    }
+    if(connection==='connecting'){unconfirmedStatus=true;render();}
+  }
   function selectInquiry(){const input=$('inquiry-text');input.focus();input.select();input.setSelectionRange(0,input.value.length);}
   $('inquiry-select').addEventListener('click',()=>{selectInquiry();$('inquiry-status').textContent=text().copyFallback;});
   $('inquiry-copy').addEventListener('click',async()=>{
@@ -155,7 +172,16 @@
     finally{copyBusy=false;$('inquiry-copy').disabled=busy;}
   });
   async function init(){
-    try{const session=await api('/v1/session',{});csrf=session.csrf_token;if(launch)context=(await api('/v1/contexts',{launch_ref:launch},contextKey)).context_id;bootstrapFailure=null;}
+    try{
+      const session=await api('/v1/session',{});csrf=session.csrf_token;
+      if(launch)context=(await api('/v1/contexts',{launch_ref:launch},contextKey)).context_id;
+      else{
+        // Redirected by core-rt without a link: the server recognises the device by its guest address.
+        try{context=(await api('/v1/contexts',{launch_ref:null},contextKey)).context_id;}
+        catch(error){if(error.code!=='source_entry_unavailable')throw error;}
+      }
+      bootstrapFailure=null;
+    }
     catch(error){bootstrapFailure=error;lastFailure=error;state='error';}
     await language();
   }
