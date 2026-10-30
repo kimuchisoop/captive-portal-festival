@@ -23,7 +23,7 @@ from werkzeug.security import generate_password_hash
 from app import Service, create_app, uid, digest, timestamp
 from jobs import housekeeping, monitor, notify, run_jobs, expire_backups
 from workflow_backup import backup_stream as backup
-from manage import initialize, add_admin, change_admin, mint_launch
+from manage import initialize, add_admin, change_admin, mint_launch, unlock_login
 
 ORIGIN = 'http://127.0.0.1:8890'
 
@@ -157,6 +157,45 @@ class Tests(unittest.TestCase):
             self.assertEqual(db.execute('SELECT max(count) FROM login_limits').fetchone()[0], 5)
         self.clock.value += 901
         self.assertEqual(self.post('/v1/admin/login', {'username': 'settings', 'password': self.password}).status_code, 200)
+
+    def test_login_lock_from_one_source_does_not_block_another(self):
+        self.csrf = self.post('/v1/admin/session').json['csrf_token']
+        for _ in range(5):
+            self.assertEqual(self.post('/v1/admin/login', {'username': 'settings', 'password': 'wrong'}).status_code, 401)
+        self.assertEqual(self.post('/v1/admin/login', {'username': 'settings', 'password': self.password}).status_code, 429)
+        other = self.app.test_client()
+        other.environ_base['REMOTE_ADDR'] = '127.0.0.2'
+        csrf = self.post('/v1/admin/session', client=other).json['csrf_token']
+        self.assertEqual(self.post('/v1/admin/login', {'username': 'settings', 'password': self.password},
+                                   client=other, csrf=csrf).status_code, 200)
+
+    def test_login_name_total_limit_spans_sources(self):
+        for i in range(10):
+            client = self.app.test_client()
+            client.environ_base['REMOTE_ADDR'] = '127.0.1.' + str(i + 1)
+            csrf = self.post('/v1/admin/session', client=client).json['csrf_token']
+            for _ in range(5):
+                self.assertEqual(self.post('/v1/admin/login', {'username': 'settings', 'password': 'wrong'},
+                                           client=client, csrf=csrf).status_code, 401)
+        self.csrf = self.post('/v1/admin/session').json['csrf_token']
+        self.assertEqual(self.post('/v1/admin/login', {'username': 'settings', 'password': self.password}).status_code, 429)
+        unlock_login(self.s, 'settings')
+        self.assertEqual(self.post('/v1/admin/login', {'username': 'settings', 'password': self.password}).status_code, 200)
+        with self.s.db() as db:
+            self.assertTrue(db.execute("SELECT 1 FROM audit WHERE action='login_unlocked'").fetchone())
+
+    def test_expired_sessions_are_reclaimed_and_admins_keep_reserved_capacity(self):
+        self.visitor()
+        self.clock.value += self.s.config['visitor_session_seconds'] + 1
+        with patch('session_guard.MAX_RETAINED_SESSION_ROWS', 3), patch('session_guard.ADMIN_RESERVED_SESSION_ROWS', 1):
+            self.visitor(self.app.test_client())
+            self.assertEqual(self.count('sessions'), 1)
+            self.visitor(self.app.test_client())
+            r = self.post('/v1/session', client=self.app.test_client())
+            self.assertEqual(r.status_code, 503)
+            self.assertEqual(r.json['code'], 'session_capacity_exhausted')
+            self.assertEqual(self.post('/v1/admin/session').status_code, 200)
+        self.assertEqual(self.count('consents'), 0)
 
     def test_login_rotates_session_logout_invalidates(self):
         self.csrf = self.post('/v1/admin/session').json['csrf_token']

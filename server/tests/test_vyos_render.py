@@ -81,4 +81,16 @@ class VyosRenderTests(unittest.TestCase):
         self.assertIn('Not rendered',err.getvalue())
         with redirect_stderr(io.StringIO()):self.assertEqual(main(['x']),2)
 
+class PortalNginxLogTests(unittest.TestCase):
+    def test_access_log_carries_app_correlation(self):
+        # The reference a guest reads out (X-Correlation-ID) must be findable in nginx's log next to nginx's own request_id.
+        text=(ROOT/'deployment'/'nginx.portal.conf.template').read_text(encoding='utf-8')
+        formats=[l for l in text.splitlines() if l.startswith('log_format festival_safe ')]
+        self.assertEqual(len(formats),1)
+        self.assertIn('request_id=$request_id correlation=$upstream_http_x_correlation_id',formats[0])
+        # Only the safe fields: no address, URI, query, cookie or user agent.
+        for unsafe in ('$remote_addr','$request_uri','$args','$http_cookie','$http_user_agent','$request '):
+            self.assertNotIn(unsafe,formats[0])
+        self.assertEqual(text.count('access_log '),text.count(' festival_safe;'))
+
 if __name__=='__main__':unittest.main()

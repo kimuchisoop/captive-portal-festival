@@ -59,7 +59,7 @@
         "expires_at"
       ],
       "delete": true,
-      "delete_reason": "明示ログアウト・MFA/管理者変更時の認証失効",
+      "delete_reason": "明示ログアウト・MFA/管理者変更時の認証失効、発行時の期限切れセッションの回収",
       "basis": [
         "app.py:169",
         "app.py:401",
