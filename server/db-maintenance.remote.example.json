@@ -1,0 +1,8 @@
+{
+  "host": "db.festival.example",
+  "port": 3306,
+  "user": "app_maintenance",
+  "password": "CHANGE_ME",
+  "database": "app_db",
+  "ssl_ca": "/usr/local/etc/festival-wifi/mysql-ca.pem"
+}
