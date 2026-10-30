@@ -8,6 +8,7 @@ import io
 import ipaddress
 import json
 import secrets
+import threading
 import time
 import uuid
 from datetime import datetime, timezone
@@ -18,6 +19,8 @@ from urllib.parse import urlsplit
 from database import DatabaseError, transaction, load_settings
 from worker_status import worker_status
 from session_guard import SessionIssueGuard, GuardRejected, require_storage_capacity
+
+PUBLIC_TERMS_SECONDS = 5
 
 from flask import Flask, g, jsonify, render_template, request, make_response
 from werkzeug.exceptions import HTTPException
@@ -73,6 +76,7 @@ class Service:
         if len(self.key) != 32:
             raise ValueError('Invalid session key')
         self.session_guard = SessionIssueGuard()
+        self.public_terms_lock = threading.Lock(); self.public_terms_cache = {}; self.public_terms_generation = 0
         self.db_settings = load_settings(self.home / 'mysql.json')
         self.clock = clock
         self.term_text = {lang: (self.home / f'terms.{lang}.txt').read_text(encoding='utf-8') for lang in ('ja', 'en')}
@@ -126,6 +130,8 @@ class Service:
         for k in ('admin_session_seconds', 'visitor_session_seconds', 'backup_interval_seconds', 'min_free_bytes'):
             if type(c.get(k)) is not int or c[k] <= 0:
                 raise ValueError(f'Invalid {k}')
+        if type(c.get('server_threads', 4)) is not int or not 1 <= c.get('server_threads', 4) <= 64:
+            raise ValueError('Invalid server_threads')
         for k in ('db_warning_bytes','backup_warning_bytes'):
             value=c.get(k)
             if value is not None and (type(value) is not int or not 1<=value<=2**63-1):
@@ -160,6 +166,24 @@ class Service:
         text = self.term_text[lang]
         return dict(document_id=self.config['terms_document_id'], version=self.config['terms_version'],
                     policy_version=self.config['policy_version'], language=lang, text=text, sha256=digest(text))
+
+    def public_terms(self, lang):
+        # Every visitor's landing page reads the same published terms; a short shared copy spares one DB round trip each.
+        now = time.monotonic()
+        with self.public_terms_lock:
+            cached, generation = self.public_terms_cache.get(lang), self.public_terms_generation
+        if cached and now - cached[0] < PUBLIC_TERMS_SECONDS:
+            return cached[1]
+        terms = self.terms(lang)
+        with self.public_terms_lock:
+            # A publication during the read bumps the generation, so the older copy is not kept.
+            if generation == self.public_terms_generation:
+                self.public_terms_cache[lang] = (now, terms)
+        return terms
+
+    def forget_public_terms(self):
+        with self.public_terms_lock:
+            self.public_terms_generation += 1; self.public_terms_cache.clear()
 
     def intake(self):
         if not self.config.get('local_intake_enabled'):
@@ -412,7 +436,7 @@ def create_app(home, clock=time.time):
         except ApiError as e:
             state = e.code
         from event_information import public as display_information
-        return jsonify(mode='local', production_enabled=False, service_state=state, adapter='disconnected', terms=s.terms(lang),event_information=display_information(s.config),daily_service_hours=s.config.get('daily_service_hours'))
+        return jsonify(mode='local', production_enabled=False, service_state=state, adapter='disconnected', terms=s.public_terms(lang),event_information=display_information(s.config),daily_service_hours=s.config.get('daily_service_hours'))
 
     @app.route('/v1/admin/session', methods=['GET', 'POST'])
     @app.post('/v1/session')
