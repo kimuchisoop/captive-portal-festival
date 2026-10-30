@@ -1,0 +1,65 @@
+# Runs all automated tests on every push and pull request. Uses a throwaway MySQL container
+# with generated test-only passwords; no service data, keys or real DB settings are used.
+name: test
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quick:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: python -m pip install -r server/requirements.txt
+      - name: Release manifest
+        working-directory: server
+        run: python verify_package.py
+      - name: Tests without MySQL
+        working-directory: server
+        run: |
+          python -m unittest discover -s tests -p test_workflow_contract.py -v
+          node tests/operator_ui.test.cjs
+          node tests/portal_state.test.cjs
+
+  mysql:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install -r server/requirements.txt
+      - name: Start disposable MySQL 8.4
+        shell: bash
+        run: |
+          root_password=$(openssl rand -hex 16); maint_password=$(openssl rand -hex 16)
+          echo "::add-mask::$root_password"; echo "::add-mask::$maint_password"
+          # Binlog stays on (MySQL 8 default); triggers need log_bin_trust_function_creators for non-SUPER accounts.
+          docker run -d --name test-mysql -p 127.0.0.1:13308:3306 -e MYSQL_ROOT_PASSWORD="$root_password" \
+            mysql:8.4 --log-bin-trust-function-creators=ON
+          for i in $(seq 1 60); do
+            docker exec test-mysql mysql -uroot -p"$root_password" -e 'SELECT 1' >/dev/null 2>&1 && break; sleep 2
+          done
+          docker exec test-mysql mysql -uroot -p"$root_password" -e \
+            "CREATE USER 'test_maint'@'%' IDENTIFIED BY '$maint_password'; GRANT ALL PRIVILEGES ON *.* TO 'test_maint'@'%';"
+          mkdir -p "$RUNNER_TEMP/mysql-test"
+          printf '{"test_only": true, "host": "127.0.0.1", "port": 13308, "user": "root", "password": "%s", "maintenance_user": "test_maint", "maintenance_password": "%s", "datadir": "/var/lib/mysql/"}' \
+            "$root_password" "$maint_password" > "$RUNNER_TEMP/mysql-test/mysql-test.json"
+          echo "WIFI_TEST_MYSQL_CONFIG=$RUNNER_TEMP/mysql-test/mysql-test.json" >> "$GITHUB_ENV"
+      - name: All Python tests (MySQL, least-privilege service account)
+        working-directory: server
+        run: python -m unittest discover -s tests -v

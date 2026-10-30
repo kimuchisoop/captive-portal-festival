@@ -364,6 +364,14 @@ def create_app(home, clock=time.time):
     def portal():
         return render_template('portal.html')
 
+    @app.get('/capport/api')
+    def capport():
+        # RFC 8908 Captive Portal API. Without AP integration no client is ever released, so every client stays captive.
+        from transport import request_origin
+        response = jsonify({'captive': True, 'user-portal-url': request_origin(s.config, '/') + '/'})
+        response.content_type = 'application/captive+json'
+        return response
+
     @app.get('/admin')
     def admin_page():
         return render_template('admin.html')
