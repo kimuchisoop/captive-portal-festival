@@ -3,6 +3,7 @@
 Usage:
   python tools/mysql_grants.py maintenance --database app_db --user app_maintenance --host 127.0.0.1
   python tools/mysql_grants.py runtime     --database app_db --user app_service     --host 127.0.0.1
+  python tools/mysql_grants.py check       --database app_db --user app_service     --host 127.0.0.1 --maintenance-user app_maintenance
 
 Order: create the empty DB and both accounts, apply the maintenance grants, run `init` with the
 maintenance account, then apply the runtime grants (column grants need the tables to exist).
@@ -45,11 +46,23 @@ def maintenance_statements(database,user,host,contract=None):
         statements.append('GRANT '+', '.join(privileges)+' ON '+identifier(database)+'.'+identifier(table)+' TO '+target+';')
     return statements
 
+def check_statements(database,service_user=None,maintenance_user=None,host=None):
+    # Run as the DB administrator: table-level accounts cannot see tables outside their grants.
+    identifier(database)
+    statements=["SELECT TABLE_NAME, TABLE_ROWS FROM information_schema.TABLES WHERE TABLE_SCHEMA='"+database+"' ORDER BY TABLE_NAME;  -- empty result = empty database"]
+    for user in (service_user,maintenance_user):
+        if user:statements.append('SHOW GRANTS FOR '+account(user,host)+';')
+    return statements
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__,formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('profile',choices=('runtime','maintenance'))
+    parser.add_argument('profile',choices=('runtime','maintenance','check'))
     parser.add_argument('--database',required=True);parser.add_argument('--user',required=True);parser.add_argument('--host',required=True)
+    parser.add_argument('--maintenance-user',help='check only: also show the grants of this account')
     args=parser.parse_args();identifier(args.database)
+    if args.profile=='check':
+        print('-- run as the MySQL administrator before init (read-only)')
+        print('\n'.join(check_statements(args.database,args.user,args.maintenance_user,args.host)));return
     build=runtime_statements if args.profile=='runtime' else maintenance_statements
     print('-- '+args.profile+' grants for '+account(args.user,args.host)+' on '+identifier(args.database)+' (generated, review before use)')
     print('\n'.join(build(args.database,args.user,args.host)))

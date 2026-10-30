@@ -99,6 +99,13 @@ class Tests(unittest.TestCase):
         with self.s.db() as db:
             return db.execute('SELECT count(*) FROM ' + table).fetchone()[0]
 
+    def test_preflight_warns_when_backup_policy_is_missing(self):
+        from preflight import inspect_home
+        codes=lambda home:{c['code']:c['status'] for c in inspect_home(home,online=False,package_check=False)['checks']}
+        self.assertNotIn('backup_policy',codes(self.home))  # sample policy sets a retention period
+        other=Path(self.temp.name)/'no-policy';init_home(other)
+        self.assertEqual(codes(other)['backup_policy'],'warning')
+
     def test_default_init_is_stopped(self):
         other = Path(self.temp.name) / 'default'
         init_home(other)
