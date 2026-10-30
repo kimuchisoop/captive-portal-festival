@@ -483,6 +483,17 @@
       "TRIGGER",
       "REFERENCES"
     ],
+    "update_tables": [
+      "meta",
+      "grants",
+      "operations",
+      "mfa_settings",
+      "consent_archive_exports"
+    ],
+    "update_basis": [
+      "jobs.py:16 set_meta upsert (init/restore/migrate)",
+      "workflow_backup.py restore: retry_of_id link, grant/operation/MFA safety changes"
+    ],
     "database_wildcard_grants": false,
     "existing_broad_grants_revoked": false
   },

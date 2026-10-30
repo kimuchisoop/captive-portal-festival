@@ -201,8 +201,9 @@ def main():
         print('MySQL settings saved in protected directory; connection succeeded. Password not printed.')
         return
     if args.command == 'init':
-        initialize(args.home, args.sample_policy,db_settings=load_settings(args.db_config),maintenance_file=args.maintenance_db_config)
+        initialize(args.home, args.sample_policy,db_settings=load_settings(args.db_config),maintenance_file=args.maintenance_db_config,open_service=False)
         print('Initialized LOCAL service. Production is disabled. No administrator exists yet.')
+        print('Next: apply the service-account grants (tools/mysql_grants.py runtime), then run preflight and add-admin.')
         return
     if args.command == 'restore-to-new':
         restore(args.source, args.key_file, args.home,load_settings(args.db_config))

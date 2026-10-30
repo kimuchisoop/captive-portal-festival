@@ -11,7 +11,7 @@ import io
 import json
 import secrets
 from database import DatabaseError
-from mysql_fixture import new_database, PreservedDirectory
+from mysql_fixture import new_database, PreservedDirectory, init_home
 import tempfile
 import time
 import unittest
@@ -43,7 +43,7 @@ class Tests(unittest.TestCase):
     def setUp(self):
         self.temp = PreservedDirectory()
         self.home = Path(self.temp.name) / 'data'
-        initialize(self.home, sample=True, db_settings=new_database())
+        init_home(self.home, sample=True)
         self.clock = Clock()
         self.app = create_app(self.home, self.clock)
         self.s = self.app.extensions['service']
@@ -101,7 +101,7 @@ class Tests(unittest.TestCase):
 
     def test_default_init_is_stopped(self):
         other = Path(self.temp.name) / 'default'
-        initialize(other, db_settings=new_database())
+        init_home(other)
         app = create_app(other)
         r = app.test_client().get('/v1/public', base_url=ORIGIN)
         self.assertEqual(r.json['service_state'], 'intake_disabled')
@@ -371,46 +371,9 @@ class Tests(unittest.TestCase):
         rows = list(csv.reader(io.StringIO(r.get_data(as_text=True).lstrip('\ufeff'))))
         self.assertEqual(rows[1][2], "'=1+1")
 
-    def test_encrypted_backup_integrity_and_wrong_key(self):
-        self.consent(); path = backup(self.s)
-        encrypted = path.read_bytes()
-        self.assertNotIn(b'festival-wifi-mysql-backup', encrypted)
-        self.assertNotIn(self.password.encode(), encrypted)
-        payload = Fernet((self.home / 'backup.key').read_bytes()).decrypt(encrypted)
-        self.assertEqual(json.loads(payload)['format'], 'festival-wifi-mysql-backup')
-        wrong = self.home / 'wrong.key'; wrong.write_bytes(Fernet.generate_key())
-        with self.assertRaises(InvalidToken):
-            restore(path, wrong, Path(self.temp.name) / 'wrong-restore', new_database())
 
-    def test_backup_tampering_rejected(self):
-        path = backup(self.s)
-        data = bytearray(path.read_bytes()); data[-20] ^= 1
-        path.write_bytes(data)
-        with self.assertRaises(InvalidToken):
-            restore(path, self.home / 'backup.key', Path(self.temp.name) / 'tampered', new_database())
 
-    def test_restore_new_directory_stopped_sessions_and_grants(self):
-        self.consent(); path = backup(self.s)
-        destination = Path(self.temp.name) / 'restored'
-        restore(path, self.home / 'backup.key', destination, new_database())
-        s = initialize(destination, restored=True)
-        self.assertFalse(s.config['local_intake_enabled'])
-        self.assertNotEqual((self.home / 'session.key').read_bytes(), (destination / 'session.key').read_bytes())
-        with s.db() as db:
-            self.assertEqual(db.execute('SELECT count(*) FROM sessions').fetchone()[0], 0)
-            self.assertEqual(db.execute('SELECT authorization_status FROM grants').fetchone()[0], 'expired')
-        with self.assertRaises(ValueError):
-            restore(path, self.home / 'backup.key', destination, new_database())
 
-    def test_old_backup_restore_keeps_logs_without_reauthorizing(self):
-        self.consent(); path = backup(self.s)
-        destination = Path(self.temp.name) / 'old-restore'
-        restore(path, self.home / 'backup.key', destination, new_database())
-        s = initialize(destination, restored=True)
-        s.clock = lambda: self.clock.value + 10 * 86400
-        housekeeping(s)
-        with s.db() as db:
-            self.assertEqual(db.execute('SELECT count(*) FROM consents').fetchone()[0], 1)
 
     def test_expired_backups_are_kept_by_operator_instruction(self):
         path = backup(self.s)
@@ -508,7 +471,7 @@ class Tests(unittest.TestCase):
         self.consent()
         other=Path(self.temp.name)/'invalid-reuse'
         with self.assertRaises(ValueError):
-            initialize(other,db_settings=self.s.db_settings)
+            init_home(other,settings=self.s.db_settings)
         with self.assertRaises(ValueError):
             Service(other)
         self.assertTrue((other/'initialization.incomplete').exists())

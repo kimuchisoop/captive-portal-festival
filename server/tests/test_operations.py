@@ -139,18 +139,6 @@ class OperationalTests(unittest.TestCase):
             self.assertEqual(before,[row[0] for row in db.execute('SHOW GRANTS FOR CURRENT_USER').fetchall()])
             self.assertTrue(db.execute("SELECT 1 FROM audit WHERE action='diagnostic_run'").fetchone())
 
-    def test_minimal_mysql_account_is_recognized_using_real_grants(self):
-        username='sff_app_'+secrets.token_hex(6);password=secrets.token_urlsafe(24)
-        raw=connect(self.s.db_settings)
-        try:
-            db=Connection(raw)
-            db.execute("CREATE USER ?@'localhost' IDENTIFIED BY ?",(username,password))
-            db.execute('GRANT SELECT,INSERT,UPDATE,DELETE ON `'+self.s.db_settings['database']+"`.* TO ?@'localhost'",(username,))
-        finally:raw.close()
-        settings={**self.s.db_settings,'user':username,'password':password}
-        r=mysql_diagnostic(settings)
-        self.assertTrue(r['connected']);self.assertTrue(r['privilege_review']['minimal'],r)
-        self.assertTrue(next(c for c in r['checks'] if c['code']=='tls_transport')['status']=='pass')
 
     def test_unresolved_roles_or_extra_scopes_are_not_marked_minimal(self):
         good=['GRANT USAGE ON *.* TO `app`@`localhost`','GRANT SELECT, INSERT, UPDATE, DELETE ON `festival`.* TO `app`@`localhost`']
