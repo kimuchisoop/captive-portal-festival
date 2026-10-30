@@ -19,5 +19,10 @@ def main():
             assert (app.ROOT/filename).is_file(),filename
         print(json.dumps(dict(version=VERSION,imports=True,assets=True,crypto=True,database_connected=False)));return
     from manage import main as manage_main
-    manage_main()
+    try:manage_main()
+    except (ValueError,OSError,KeyError,LookupError) as error:
+        # Operators get one readable line; set FESTIVAL_WIFI_DEBUG=1 for the full traceback.
+        import os
+        if os.environ.get('FESTIVAL_WIFI_DEBUG')=='1':raise
+        print('error: '+type(error).__name__+': '+str(error),file=sys.stderr);raise SystemExit(2)
 if __name__=='__main__':main()

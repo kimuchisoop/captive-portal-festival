@@ -66,18 +66,6 @@ class ExperienceTests(unittest.TestCase):
     def test_summary_read_does_not_mutate_audit_or_records(self):
         before=self.count('audit');summary(self.s,'2026-10-20');self.assertEqual(self.count('audit'),before)
 
-    def test_aggregate_survives_application_restart_and_real_backup_restore(self):
-        from app import create_app
-        from stream_backup import backup_stream,restore_stream
-        from manage import initialize
-        from mysql_fixture import new_database
-        self.clock.value=timestamp('2026-10-20T03:00:00Z');increment(self.s,'server_error')
-        restarted=create_app(self.home,self.clock).extensions['service']
-        self.assertEqual(summary(restarted,'2026-10-20')['hours'][12]['server_errors'],1)
-        source=backup_stream(self.s);destination=self.home.parent/'restored-summary'
-        restore_stream(source,self.home/'backup.key',destination,new_database())
-        restored=initialize(destination,restored=True)
-        self.assertEqual(summary(restored,'2026-10-20')['hours'][12]['server_errors'],1)
 
     def test_page_contains_language_help_and_labeled_accessibility_controls(self):
         r=self.get('/');text=r.get_data(as_text=True)

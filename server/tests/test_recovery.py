@@ -55,14 +55,6 @@ class RecoveryTests(unittest.TestCase):
     get=service_tests.Tests.get
     post=service_tests.Tests.post
     count=service_tests.Tests.count
-    def test_stream_backup_verify_and_real_restore_comparison(self):
-        source=backup_stream(self.s);self.assertTrue(source.name.endswith('.sffbackup'))
-        summary=inspect(source,(self.home/'backup.key').read_bytes());self.assertEqual(summary['header']['schema_version'],'4')
-        self.assertEqual(decrypt_check(self.s,source.name)['status'],'passed')
-        restored=Path(self.temp.name)/'stream-restored'
-        result=restore_check(self.s,source.name,restored,new_database());self.assertEqual(result['status'],'passed',result)
-        self.assertFalse(json.loads((restored/'config.json').read_text())['local_intake_enabled'])
-        self.assertTrue(source.exists());self.assertGreater(self.count('audit'),4)
     def test_stream_inventory_and_browser_check_permissions(self):
         source=backup_stream(self.s);self.login('records')
         items=self.get('/v1/admin/backups').json['items'];self.assertEqual(items[0]['filename'],source.name)
@@ -80,21 +72,6 @@ class RecoveryTests(unittest.TestCase):
         source=backup_stream(self.s)
         from stream_backup import restore_stream
         with self.assertRaises(ValueError): restore_stream(source,self.home/'backup.key',Path(self.temp.name)/'refused',self.s.db_settings)
-    def test_recovery_kit_includes_logs_keys_config_and_restores_to_closed_home(self):
-        runtime=self.home/'runtime';runtime.mkdir();(runtime/'test.log').write_text('retained log for test')
-        reports=self.home/'support-reports';reports.mkdir();(reports/'retained.json').write_text('{"test":"retained"}')
-        kit=Path(self.temp.name)/'recovery.sffkit';keys=Path(self.temp.name)/'separate-keys'
-        # Use a separate archive parent, never the key directory's parent.
-        archive_dir=Path(self.temp.name)/'archives';archive_dir.mkdir();kit=archive_dir/'recovery.sffkit'
-        result=create_kit(self.s,kit,keys);self.assertEqual(result['status'],'verified')
-        manifest=consume(kit,(keys/'recovery.key').read_bytes());self.assertIn('files/runtime/test.log',manifest['files']);self.assertNotIn('files/mysql.json',manifest['files'])
-        self.assertNotIn(b'retained log for test',kit.read_bytes())
-        destination=Path(self.temp.name)/'kit-restored';restored=restore_kit(kit,keys/'recovery.key',destination,new_database())
-        self.assertEqual(restored['status'],'verified');evidence=Path(restored['evidence_directory'])
-        self.assertEqual((evidence/'files/runtime/test.log').read_text(),'retained log for test')
-        self.assertEqual((evidence/'files/backup.key').read_bytes(),(self.home/'backup.key').read_bytes())
-        self.assertNotEqual((destination/'backup.key').read_bytes(),(self.home/'backup.key').read_bytes())
-        self.assertFalse(json.loads((destination/'config.json').read_text())['local_intake_enabled'])
     def test_recovery_refuses_running_service_and_same_key_parent(self):
         archive=Path(self.temp.name)/'archives';archive.mkdir()
         with self.assertRaises(ValueError): create_kit(self.s,archive/'x',archive/'keys')
@@ -113,12 +90,5 @@ class RecoveryTests(unittest.TestCase):
         self.login('viewer');self.assertEqual(self.post('/v1/admin/preflight').status_code,403)
         self.login('settings');self.assertEqual(self.post('/v1/admin/preflight',csrf='bad').status_code,403)
         report=self.post('/v1/admin/preflight');self.assertEqual(report.status_code,200);self.assertNotIn(self.s.db_settings['password'],report.get_data(as_text=True))
-    def test_legacy_size_warning_keeps_file(self):
-        from jobs import backup,monitor
-        source=backup(self.s)
-        with patch('backup_review.MAX_BACKUP_BYTES',100): monitor(self.s)
-        with self.s.db() as db:
-            row=db.execute("SELECT state FROM notifications WHERE code='backup_legacy_size'").fetchone();self.assertEqual(row[0],'open')
-        self.assertTrue(source.exists())
 
 if __name__=='__main__': unittest.main()

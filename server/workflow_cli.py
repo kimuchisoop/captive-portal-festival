@@ -9,7 +9,7 @@ from workflow_common import canonical,private_dir,read_private,strict_json,targe
 from workflow_database import maintenance_settings,verify_contract
 from workflow_generation import create_generation,require_runtime_ready
 
-def initialize(home,sample=False,restored=False,db_settings=None,maintenance_file=None):
+def initialize(home,sample=False,restored=False,db_settings=None,maintenance_file=None,open_service=True):
     if restored:raise ValueError('Use the explicit schema-five recovery commands')
     if not db_settings or not maintenance_file:raise ValueError('Separate runtime and maintenance credentials required')
     maintenance=maintenance_settings(maintenance_file,db_settings)
@@ -29,7 +29,8 @@ def initialize(home,sample=False,restored=False,db_settings=None,maintenance_fil
     history=private_dir(home,'migration-history');destination=history/('initialization-'+uid()+'.completed.json')
     if not destination.resolve().is_relative_to(home):raise ValueError('Unsafe initialization marker destination')
     os.rename(home/'initialization.incomplete',destination)
-    return Service(home)
+    # The service account's column grants can only be applied once the tables exist, so the CLI does not reconnect here.
+    return Service(home) if open_service else None
 
 def register(sub):
     upgrade=sub.add_parser('upgrade-schema5',help='Stopped explicit additive 4-to-5 candidate; retain all failures')
